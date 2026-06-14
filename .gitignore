@@ -12,6 +12,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# local secrets / notes (never commit)
+*.local.md
+SECRETS*
+
 # logs
 npm-debug.log*
 yarn-debug.log*
