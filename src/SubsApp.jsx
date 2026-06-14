@@ -743,6 +743,7 @@ function chargeDaysInMonth(sub, y, m) {
 function CalendarView({ subs, onOpen }) {
   const now = new Date()
   const [cur, setCur] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  const [selDay, setSelDay] = useState(null)
   const { y, m } = cur
   const active = subs.filter((s) => s.status === 'active' || s.status === 'trial')
 
@@ -766,9 +767,10 @@ function CalendarView({ subs, onOpen }) {
     .sort((a, b) => a - b)
     .forEach((day) => byDay[day].forEach((s) => list.push({ day, s })))
   const monthTotal = list.reduce((acc, { s }) => acc + eur(s.amount, s.cur), 0)
+  const shownList = selDay ? (byDay[selDay] || []).map((s) => ({ day: selDay, s })) : list
 
-  const prev = () => setCur(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
-  const next = () => setCur(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
+  const prev = () => { setSelDay(null); setCur(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 })) }
+  const next = () => { setSelDay(null); setCur(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 })) }
   const navBtn = { width: 34, height: 34, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--panel)', color: 'var(--dim)', cursor: 'pointer', fontSize: 16 }
 
   return (
@@ -790,9 +792,10 @@ function CalendarView({ subs, onOpen }) {
           if (day == null) return <div key={'e' + i} />
           const charges = byDay[day] || []
           const has = charges.length > 0
+          const sel = selDay === day
           return (
-            <div key={day} style={{ aspectRatio: '1', borderRadius: 10, border: '1px solid ' + (isToday(day) ? 'var(--accent)' : 'var(--line)'), background: has ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-              <div style={{ fontSize: 12.5, fontWeight: isToday(day) ? 800 : 600, color: isToday(day) ? 'var(--accent2)' : has ? 'var(--tx)' : 'var(--dim)' }}>{day}</div>
+            <div key={day} onClick={has ? () => setSelDay(sel ? null : day) : undefined} style={{ aspectRatio: '1', borderRadius: 10, cursor: has ? 'pointer' : 'default', border: '1px solid ' + (sel ? 'var(--accent2)' : isToday(day) ? 'var(--accent)' : 'var(--line)'), background: sel ? 'color-mix(in srgb, var(--accent) 26%, var(--panel))' : has ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+              <div style={{ fontSize: 12.5, fontWeight: isToday(day) || sel ? 800 : 600, color: sel || has ? 'var(--tx)' : isToday(day) ? 'var(--accent2)' : 'var(--dim)' }}>{day}</div>
               {has && (
                 <div style={{ display: 'flex', gap: 2 }}>
                   {charges.slice(0, 3).map((s, j) => (
@@ -806,14 +809,18 @@ function CalendarView({ subs, onOpen }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '22px 0 12px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>Cobros de {MONTHS_FULL[m].toLowerCase()}</div>
-        {list.length > 0 && <div style={{ fontSize: 12.5, color: 'var(--dim)', fontWeight: 600 }}>{fmt(monthTotal)}</div>}
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{selDay ? `Día ${selDay} de ${MONTHS_FULL[m].toLowerCase()}` : `Cobros de ${MONTHS_FULL[m].toLowerCase()}`}</div>
+        {selDay ? (
+          <button onClick={() => setSelDay(null)} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Ver todo el mes</button>
+        ) : (
+          list.length > 0 && <div style={{ fontSize: 12.5, color: 'var(--dim)', fontWeight: 600 }}>{fmt(monthTotal)}</div>
+        )}
       </div>
-      {list.length === 0 ? (
+      {shownList.length === 0 ? (
         <div style={{ fontSize: 13.5, color: 'var(--faint)', textAlign: 'center', padding: '24px 0' }}>Sin cobros este mes 🎉</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {list.map(({ day, s }, i) => (
+          {shownList.map(({ day, s }, i) => (
             <div key={i} onClick={() => onOpen(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px', cursor: 'pointer' }}>
               <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>{day}</div>
