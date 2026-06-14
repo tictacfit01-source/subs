@@ -1,8 +1,9 @@
 # Subs · control de suscripciones
 
-Web app personal (mobile-first) para llevar el control de tus suscripciones: cuánto
-gastas al mes, qué se renueva pronto y en qué se te va el dinero. Con login y datos
-en **Supabase**. Portada del diseño de Claude Design (`Claude Design/Subs.dc.html`).
+Web app (mobile-first) **multiusuario** para controlar suscripciones: cuánto gastas al
+mes, qué se renueva pronto y en qué se te va el dinero. Cualquiera puede registrarse con
+su correo y **cada usuario ve solo sus datos** (aislamiento por RLS en Supabase). Portada
+del diseño de Claude Design (`Claude Design/Subs.dc.html`).
 
 **Stack:** Vite + React 19 + Supabase (Auth con enlace mágico + Postgres con RLS).
 Despliegue pensado para Vercel.
@@ -32,8 +33,12 @@ En Supabase → **Authentication**:
 - **URL Configuration**:
   - *Site URL*: `http://localhost:5173` (en desarrollo) y luego tu dominio de Vercel.
   - *Redirect URLs*: añade `http://localhost:5173` y tu URL de Vercel.
-- (Opcional, al ser una app personal) cuando hayas entrado por primera vez, puedes
-  desactivar **Allow new users to sign up** para que nadie más pueda registrarse.
+- **Allow new users to sign up**: déjalo **activado** (registro abierto) para que pueda
+  entrar cualquiera con su correo. Cada usuario solo ve sus propias suscripciones (RLS).
+- **Email para producción**: el envío de correos por defecto de Supabase está muy limitado
+  (pocos magic links/hora) y no sirve para una app pública real. Para uso público de verdad,
+  configura un SMTP propio en Authentication → Emails (p. ej. Resend, SendGrid o Postmark).
+  Opcional pero recomendable: añadir también **Google** como proveedor para un login en 1 clic.
 
 ## 4. Variables de entorno
 
