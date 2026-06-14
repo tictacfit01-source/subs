@@ -729,7 +729,12 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
         <div style={{ position: 'sticky', bottom: 0, zIndex: 30, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', alignItems: 'center', justifyItems: 'center', padding: '10px 8px calc(10px + env(safe-area-inset-bottom))', background: 'color-mix(in srgb, var(--bg) 85%, transparent)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--line)' }}>
           <NavBtn icon="▦" label="Panel" on={screen === 'dashboard'} onClick={() => go('dashboard')} />
           <NavBtn icon="◔" label="Stats" on={screen === 'stats'} onClick={() => go('stats')} />
-          <button onClick={openAdd} style={{ width: 48, height: 48, borderRadius: 15, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontSize: 24, lineHeight: 1, cursor: 'pointer', boxShadow: '0 6px 18px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+          <button onClick={openAdd} aria-label="Añadir suscripción" style={{ width: 48, height: 48, borderRadius: 15, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', cursor: 'pointer', boxShadow: '0 6px 18px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" style={{ display: 'block' }}>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
           <NavBtn icon="◷" label="Próximos" on={screen === 'upcoming'} onClick={() => go('upcoming')} />
           <NavBtn icon="⚙" label="Ajustes" on={screen === 'settings'} onClick={() => go('settings')} />
         </div>
