@@ -1,0 +1,21 @@
+{
+  "name": "subs",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Subs — control de suscripciones personales (Vite + React + Supabase)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
+  }
+}

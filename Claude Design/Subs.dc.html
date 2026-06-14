@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  .subsapp {
+    --bg: #0c0d11; --bg2: #101218; --panel: #16181f; --panel2: #1c1f28;
+    --line: rgba(255,255,255,0.07); --line2: rgba(255,255,255,0.12);
+    --tx: #f3f4f7; --dim: #9aa1ad; --faint: #636b78;
+    --accent: #6f74f5; --accent2: #8b8ff7; --accentSoft: rgba(111,116,245,0.16);
+    --good: #34d399; --warn: #fbbf24; --bad: #fb6b7c;
+    --shadow: 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark;
+  }
+  .subsapp[data-theme="light"] {
+    --bg: #eceef2; --bg2: #f4f5f8; --panel: #ffffff; --panel2: #f6f7fa;
+    --line: rgba(15,18,30,0.08); --line2: rgba(15,18,30,0.14);
+    --tx: #14161d; --dim: #59616e; --faint: #99a0ad;
+    --accent: #5a5ef0; --accent2: #4b50e6; --accentSoft: rgba(90,94,240,0.12);
+    --shadow: 0 10px 34px rgba(20,22,40,0.12);
+    color-scheme: light;
+  }
+  .subsapp ::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(101%); } to { transform: translateY(0); } }
+  @keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</helmet>
+<div class="subsapp" data-theme="{{ theme }}" style="min-height: 100vh; background: radial-gradient(120% 70% at 50% -10%, var(--bg2), var(--bg) 60%); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--tx); -webkit-font-smoothing: antialiased; display: flex; justify-content: center; padding: 0;">
+  <div style="width: 100%; max-width: 460px; min-height: 100vh; position: relative; background: var(--bg); box-shadow: 0 0 80px rgba(0,0,0,0.35); display: flex; flex-direction: column;">
+
+    <!-- ===== TOP BAR ===== -->
+    <div style="position: sticky; top: 0; z-index: 20; backdrop-filter: blur(18px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); padding: 14px 18px 12px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: #fff; box-shadow: 0 4px 14px var(--accentSoft);">S</div>
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: -0.02em;">{{ screenTitle }}</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <button onClick="{{ toggleTheme }}" style="width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); color: var(--dim); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center;">{{ themeIcon }}</button>
+      </div>
+    </div>
+
+    <!-- ===== SCROLL AREA ===== -->
+    <div style="flex: 1; padding: 0 0 110px;">
+
+      <!-- ============ DASHBOARD ============ -->
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+      <div style="padding: 18px 18px 0;">
+
+        <!-- header variant switcher -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+          <div style="font-size: 13px; color: var(--faint); font-weight: 600;">Junio 2026</div>
+          <div style="display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px;">
+            <sc-for list="{{ headerTabs }}" as="h" hint-placeholder-count="3">
+              <button onClick="{{ h.onClick }}" style="{{ h.style }}">{{ h.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- the scary number card -->
+        <div style="background: linear-gradient(165deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 22px; padding: 22px; box-shadow: var(--shadow); position: relative; overflow: hidden;">
+          <div style="position: absolute; inset: 0; background: radial-gradient(80% 120% at 90% -20%, var(--accentSoft), transparent 60%); pointer-events: none;"></div>
+          <div style="position: relative;">
+            <div style="font-size: 12.5px; color: var(--dim); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;">Gasto mensual</div>
+            <div style="display: flex; align-items: flex-end; gap: 12px; margin-top: 6px;">
+              <div style="font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums;">{{ totalText }}</div>
+              <div style="{{ trendStyle }}">{{ trendText }}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; margin-top: 12px;">
+              <div style="font-size: 13.5px; color: var(--dim);">{{ annualText }} <span style="color: var(--faint);">/ año</span></div>
+              <div style="width: 4px; height: 4px; border-radius: 50%; background: var(--faint);"></div>
+              <div style="font-size: 13.5px; color: var(--dim);">{{ activeCount }} activas</div>
+            </div>
+
+            <!-- variant B: sparkline -->
+            <sc-if value="{{ showSpark }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top: 16px;">{{ sparkEl }}</div>
+            </sc-if>
+            <!-- variant C: composition bar -->
+            <sc-if value="{{ showComp }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top: 16px;">
+                <div style="display: flex; height: 10px; border-radius: 6px; overflow: hidden; gap: 2px;">
+                  <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+                    <div style="{{ c.segStyle }}"></div>
+                  </sc-for>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                  <sc-for list="{{ catsTop }}" as="c" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--dim);"><span style="{{ c.dotStyle }}"></span>{{ c.label }} {{ c.pctText }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <!-- upcoming renewals -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin: 24px 0 12px;">
+          <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em;">Próximas renovaciones</div>
+          <div style="font-size: 12px; color: var(--faint); font-weight: 600;">30 días</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; overflow-x: auto; padding: 2px 18px 6px; scroll-snap-type: x mandatory;">
+        <sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="4">
+          <div onClick="{{ u.onOpen }}" style="{{ u.cardStyle }}">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="{{ u.monoStyle }}">{{ u.mono }}</div>
+              <div style="{{ u.pillStyle }}">{{ u.whenText }}</div>
+            </div>
+            <div style="margin-top: 14px;">
+              <div style="font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.name }}</div>
+              <div style="font-size: 12.5px; color: var(--dim); margin-top: 2px;">{{ u.sub }}</div>
+            </div>
+            <div style="font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin-top: 12px; font-variant-numeric: tabular-nums;">{{ u.amountText }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- category donut snapshot -->
+      <div style="padding: 0 18px;">
+        <div style="margin: 24px 0 12px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em;">En qué se va</div>
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; flex-shrink: 0; width: 132px; height: 132px; display: flex; align-items: center; justify-content: center;">
+            {{ donutSmallEl }}
+            <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <div style="font-size: 10px; color: var(--faint); font-weight: 600; text-transform: uppercase;">Total/mes</div>
+              <div style="font-size: 18px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">{{ totalShort }}</div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 9px; min-width: 0;">
+            <sc-for list="{{ catsTop }}" as="c" hint-placeholder-count="4">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="{{ c.dotStyle }}"></span>
+                <div style="font-size: 12.5px; color: var(--tx); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.label }}</div>
+                <div style="font-size: 12.5px; color: var(--dim); font-weight: 600; font-variant-numeric: tabular-nums;">{{ c.pctText }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- all subscriptions list -->
+      <div style="padding: 0 18px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin: 24px 0 12px;">
+          <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em;">Todas <span style="color: var(--faint); font-weight: 600;">· {{ listCount }}</span></div>
+          <button onClick="{{ cycleSort }}" style="display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 7px 11px; font-size: 12px; font-weight: 600; color: var(--dim); cursor: pointer;">↕ {{ sortLabel }}</button>
+        </div>
+        <!-- category filter chips -->
+        <div style="display: flex; gap: 7px; overflow-x: auto; padding-bottom: 12px;">
+          <sc-for list="{{ filterChips }}" as="f" hint-placeholder-count="5">
+            <button onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <sc-for list="{{ listSubs }}" as="s" hint-placeholder-count="6">
+            <div onClick="{{ s.onOpen }}" style="{{ s.rowStyle }}">
+              <div style="{{ s.monoStyle }}">{{ s.mono }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 7px;">
+                  <span style="font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.name }}</span>
+                  <sc-if value="{{ s.badge }}" hint-placeholder-val="{{ false }}"><span style="{{ s.badgeStyle }}">{{ s.badge }}</span></sc-if>
+                </div>
+                <div style="font-size: 12px; color: var(--dim); margin-top: 2px;">{{ s.metaText }}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 14.5px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;">{{ s.amountText }}</div>
+                <div style="font-size: 11.5px; color: var(--faint); margin-top: 2px;">{{ s.cycleText }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ STATS ============ -->
+      <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 18px;">
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: var(--shadow);">
+          <div style="font-size: 13px; color: var(--dim); font-weight: 600;">Gasto mensual total</div>
+          <div style="font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin-top: 4px; font-variant-numeric: tabular-nums;">{{ totalText }}</div>
+          <div style="margin-top: 16px;">{{ evolutionEl }}</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+            <sc-for list="{{ monthLabels }}" as="m" hint-placeholder-count="6">
+              <div style="font-size: 10.5px; color: var(--faint); font-weight: 600;">{{ m.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin: 24px 0 12px; font-size: 16px; font-weight: 700;">Gasto por categoría</div>
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px;">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <sc-for list="{{ cats }}" as="c" hint-placeholder-count="6">
+              <div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                  <div style="display: flex; align-items: center; gap: 8px;"><span style="{{ c.dotStyle }}"></span><span style="font-size: 13px; font-weight: 600;">{{ c.label }}</span></div>
+                  <div style="font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;">{{ c.amountText }}</div>
+                </div>
+                <div style="height: 8px; border-radius: 5px; background: var(--panel2); overflow: hidden;"><div style="{{ c.barStyle }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin: 24px 0 12px; font-size: 16px; font-weight: 700;">Las más caras</div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <sc-for list="{{ ranking }}" as="r" hint-placeholder-count="5">
+            <div onClick="{{ r.onOpen }}" style="display: flex; align-items: center; gap: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 13px 15px; cursor: pointer;">
+              <div style="font-size: 13px; font-weight: 800; color: var(--faint); width: 18px; font-variant-numeric: tabular-nums;">{{ r.rank }}</div>
+              <div style="{{ r.monoStyle }}">{{ r.mono }}</div>
+              <div style="flex: 1; font-size: 14px; font-weight: 700;">{{ r.name }}</div>
+              <div style="font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;">{{ r.amountText }}<span style="font-size: 11px; color: var(--faint); font-weight: 600;">/mes</span></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin: 24px 0 12px; font-size: 16px; font-weight: 700;">Mensual vs anual <span style="font-size: 12px; color: var(--faint); font-weight: 600;">· dónde ahorrar</span></div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <sc-for list="{{ savings }}" as="v" hint-placeholder-count="3">
+            <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 14px 16px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;"><div style="{{ v.monoStyle }}">{{ v.mono }}</div><div style="font-size: 14px; font-weight: 700;">{{ v.name }}</div></div>
+                <div style="background: var(--accentSoft); color: var(--accent2); font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 8px;">−{{ v.saveText }}/año</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; color: var(--dim);">
+                <span style="font-variant-numeric: tabular-nums;">{{ v.monthlyYear }}/año mensual</span><span style="color: var(--faint);">→</span><span style="color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums;">{{ v.annualPrice }}/año anual</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ DETAIL ============ -->
+      <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="animation: popIn .26s ease;">
+        <div style="{{ detailHeroStyle }}">
+          <button onClick="{{ goBack }}" style="position: absolute; top: 16px; left: 16px; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line2); background: rgba(0,0,0,0.22); color: #fff; cursor: pointer; font-size: 17px; backdrop-filter: blur(8px);">‹</button>
+          <div style="display: flex; flex-direction: column; align-items: center; padding: 56px 20px 24px;">
+            <div style="{{ detailMonoStyle }}">{{ detail.mono }}</div>
+            <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-top: 14px; color: #fff;">{{ detail.name }}</div>
+            <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 3px;">{{ detail.catLabel }}</div>
+            <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 14px; color: #fff;">
+              <span style="font-size: 38px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;">{{ detail.amountText }}</span>
+              <span style="font-size: 14px; color: rgba(255,255,255,0.7);">/ {{ detail.cycleShort }}</span>
+            </div>
+            <sc-if value="{{ detail.fxNote }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px;">{{ detail.fxNote }}</div></sc-if>
+          </div>
+        </div>
+
+        <div style="padding: 18px;">
+          <!-- trial / status banner -->
+          <sc-if value="{{ detail.banner }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ detail.bannerStyle }}">{{ detail.banner }}</div>
+          </sc-if>
+
+          <!-- info grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 4px;">
+            <sc-for list="{{ detail.facts }}" as="f" hint-placeholder-count="4">
+              <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px;">
+                <div style="font-size: 11px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">{{ f.k }}</div>
+                <div style="font-size: 14.5px; font-weight: 700; margin-top: 4px; color: {{ f.color }};">{{ f.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- payment history -->
+          <div style="margin: 22px 0 10px; font-size: 15px; font-weight: 700;">Histórico de pagos</div>
+          <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px 12px;">
+            {{ historyEl }}
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+              <sc-for list="{{ detail.histLabels }}" as="h" hint-placeholder-count="6"><div style="font-size: 10px; color: var(--faint); font-weight: 600;">{{ h.label }}</div></sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ detail.notes }}" hint-placeholder-val="{{ false }}">
+            <div style="margin: 22px 0 10px; font-size: 15px; font-weight: 700;">Notas</div>
+            <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px; font-size: 13.5px; color: var(--dim); line-height: 1.5;">{{ detail.notes }}</div>
+          </sc-if>
+
+          <!-- actions -->
+          <div style="display: flex; gap: 9px; margin-top: 22px;">
+            <button onClick="{{ editCurrent }}" style="flex: 1; padding: 14px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;">Editar</button>
+            <button onClick="{{ togglePause }}" style="flex: 1; padding: 14px; border-radius: 14px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;">{{ detail.pauseLabel }}</button>
+          </div>
+          <button onClick="{{ toggleCancel }}" style="width: 100%; margin-top: 9px; padding: 13px; border-radius: 14px; border: 1px solid var(--line); background: transparent; color: {{ detail.cancelColor }}; font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit;">{{ detail.cancelLabel }}</button>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ AJUSTES ============ -->
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 18px;">
+        <div style="font-size: 13px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;">Apariencia</div>
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px;">
+            <div style="font-size: 14px; font-weight: 600;">Tema</div>
+            <div style="display: flex; gap: 4px; background: var(--panel2); border-radius: 10px; padding: 3px;">
+              <button onClick="{{ setDark }}" style="{{ darkBtnStyle }}">Oscuro</button>
+              <button onClick="{{ setLight }}" style="{{ lightBtnStyle }}">Claro</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin: 22px 0 10px;">Moneda</div>
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div><div style="font-size: 14px; font-weight: 600;">Moneda principal</div><div style="font-size: 12px; color: var(--dim); margin-top: 2px;">Los totales se muestran en EUR</div></div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--accent2);">EUR €</div>
+          </div>
+          <div style="height: 1px; background: var(--line); margin: 14px 0;"></div>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div><div style="font-size: 14px; font-weight: 600;">Tipo de cambio USD→EUR</div><div style="font-size: 12px; color: var(--dim); margin-top: 2px;">Fijo, para normalizar el total</div></div>
+            <div style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">0,92</div>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin: 22px 0 10px;">Datos</div>
+        <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;">
+          <button onClick="{{ showEmpty }}" style="width: 100%; text-align: left; display: flex; align-items: center; justify-content: space-between; padding: 16px; background: transparent; border: none; border-bottom: 1px solid var(--line); cursor: pointer; font-family: inherit;">
+            <div><div style="font-size: 14px; font-weight: 600; color: var(--tx);">Ver estado vacío</div><div style="font-size: 12px; color: var(--dim); margin-top: 2px;">Cómo se ve sin suscripciones</div></div>
+            <span style="color: var(--faint);">›</span>
+          </button>
+          <button onClick="{{ restoreDemo }}" style="width: 100%; text-align: left; display: flex; align-items: center; justify-content: space-between; padding: 16px; background: transparent; border: none; cursor: pointer; font-family: inherit;">
+            <div><div style="font-size: 14px; font-weight: 600; color: var(--tx);">Restaurar datos de ejemplo</div><div style="font-size: 12px; color: var(--dim); margin-top: 2px;">Vuelve a las 8 suscripciones demo</div></div>
+            <span style="color: var(--faint);">↺</span>
+          </button>
+        </div>
+        <div style="text-align: center; font-size: 12px; color: var(--faint); margin-top: 28px;">Subs · control de suscripciones · v1</div>
+      </div>
+      </sc-if>
+
+      <!-- ============ EMPTY STATE ============ -->
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 32px; min-height: 60vh;">
+        <div style="width: 88px; height: 88px; border-radius: 26px; background: linear-gradient(160deg, var(--panel2), var(--panel)); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); margin-bottom: 22px;">
+          <div style="font-size: 38px;">🪄</div>
+        </div>
+        <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.02em;">Añade tu primera suscripción</div>
+        <div style="font-size: 14px; color: var(--dim); margin-top: 8px; line-height: 1.5; max-width: 280px;">Netflix, Spotify, el gimnasio, tu dominio… Tenlo todo en un sitio y descubre cuánto se te va de verdad.</div>
+        <button onClick="{{ openAdd }}" style="margin-top: 24px; padding: 14px 26px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 8px 22px var(--accentSoft);">+ Añadir suscripción</button>
+        <button onClick="{{ restoreDemo }}" style="margin-top: 12px; padding: 10px; background: transparent; border: none; color: var(--dim); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: underline;">o cargar datos de ejemplo</button>
+      </div>
+      </sc-if>
+
+    </div>
+
+    <!-- ===== BOTTOM NAV ===== -->
+    <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+    <div style="position: sticky; bottom: 0; z-index: 30; display: flex; align-items: center; justify-content: space-around; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(20px); border-top: 1px solid var(--line);">
+      <button onClick="{{ goDash }}" style="{{ navDashStyle }}"><div style="font-size: 19px;">▦</div><div style="font-size: 10.5px; font-weight: 600;">Panel</div></button>
+      <button onClick="{{ goStats }}" style="{{ navStatsStyle }}"><div style="font-size: 19px;">◔</div><div style="font-size: 10.5px; font-weight: 600;">Stats</div></button>
+      <button onClick="{{ openAdd }}" style="width: 54px; height: 54px; border-radius: 18px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 26px; font-weight: 400; cursor: pointer; box-shadow: 0 8px 22px var(--accentSoft); display: flex; align-items: center; justify-content: center; margin-top: -12px;">+</button>
+      <button onClick="{{ goSettings }}" style="{{ navSetStyle }}"><div style="font-size: 19px;">⚙</div><div style="font-size: 10.5px; font-weight: 600;">Ajustes</div></button>
+    </div>
+    </sc-if>
+
+    <!-- ===== ADD/EDIT SHEET ===== -->
+    <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center;">
+      <div onClick="{{ closeSheet }}" style="position: absolute; inset: 0; background: rgba(0,0,0,0.55); animation: scrim .25s ease;"></div>
+      <div style="position: relative; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; background: var(--bg2); border-radius: 26px 26px 0 0; border-top: 1px solid var(--line2); box-shadow: 0 -10px 50px rgba(0,0,0,0.5); animation: sheetUp .34s cubic-bezier(.16,1,.3,1); padding: 8px 20px 28px;">
+        <div style="width: 38px; height: 4px; border-radius: 3px; background: var(--line2); margin: 8px auto 14px;"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+          <div style="font-size: 19px; font-weight: 800; letter-spacing: -0.02em;">{{ sheetTitle }}</div>
+          <button onClick="{{ closeSheet }}" style="width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--dim); cursor: pointer; font-size: 15px;">✕</button>
+        </div>
+
+        <!-- name -->
+        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 7px;">Nombre</label>
+        <input value="{{ form.name }}" onInput="{{ onName }}" placeholder="Netflix, Spotify…" style="width: 100%; padding: 13px 14px; border-radius: 13px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 15px; font-family: inherit; outline: none;" />
+
+        <!-- amount + currency -->
+        <div style="display: flex; gap: 10px; margin-top: 14px;">
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 7px;">Importe</label>
+            <input value="{{ form.amount }}" onInput="{{ onAmount }}" inputmode="decimal" placeholder="0,00" style="width: 100%; padding: 13px 14px; border-radius: 13px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 15px; font-family: inherit; outline: none; font-variant-numeric: tabular-nums;" />
+          </div>
+          <div>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 7px;">Moneda</label>
+            <div style="display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line2); border-radius: 13px; padding: 4px;">
+              <button onClick="{{ setEUR }}" style="{{ eurBtnStyle }}">€</button>
+              <button onClick="{{ setUSD }}" style="{{ usdBtnStyle }}">$</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- category chips -->
+        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin: 16px 0 8px;">Categoría</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 7px;">
+          <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="8">
+            <button onClick="{{ c.onClick }}" style="{{ c.style }}"><span style="{{ c.dotStyle }}"></span>{{ c.label }}</button>
+          </sc-for>
+        </div>
+
+        <!-- cycle segmented -->
+        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin: 16px 0 8px;">Ciclo de facturación</label>
+        <div style="display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line2); border-radius: 13px; padding: 4px;">
+          <sc-for list="{{ cycleOpts }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+
+        <!-- next date + method -->
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 7px;">Próximo cobro</label>
+            <input value="{{ form.next }}" onInput="{{ onNext }}" type="date" style="width: 100%; padding: 12px 14px; border-radius: 13px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 14px; font-family: inherit; outline: none;" />
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 7px;">Método de pago</label>
+            <input value="{{ form.method }}" onInput="{{ onMethod }}" placeholder="Tarjeta ·1234" style="width: 100%; padding: 13px 14px; border-radius: 13px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 14px; font-family: inherit; outline: none;" />
+          </div>
+        </div>
+
+        <!-- trial toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 13px;">
+          <div><div style="font-size: 14px; font-weight: 600;">En prueba gratuita</div><div style="font-size: 12px; color: var(--dim); margin-top: 2px;">Te avisa antes del primer cobro</div></div>
+          <button onClick="{{ toggleTrial }}" style="{{ trialToggleStyle }}"><div style="{{ trialKnobStyle }}"></div></button>
+        </div>
+
+        <!-- notes -->
+        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin: 16px 0 7px;">Notas <span style="color: var(--faint);">(opcional)</span></label>
+        <textarea value="{{ form.notes }}" onInput="{{ onNotes }}" placeholder="Plan, recordatorios…" style="width: 100%; min-height: 64px; padding: 13px 14px; border-radius: 13px; border: 1px solid var(--line2); background: var(--panel); color: var(--tx); font-size: 14px; font-family: inherit; outline: none; resize: none;"></textarea>
+
+        <button onClick="{{ saveForm }}" style="width: 100%; margin-top: 20px; padding: 16px; border-radius: 15px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 8px 22px var(--accentSoft);">{{ saveLabel }}</button>
+        <sc-if value="{{ canDelete }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ deleteForm }}" style="width: 100%; margin-top: 9px; padding: 13px; border-radius: 14px; border: none; background: transparent; color: var(--bad); font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit;">Eliminar suscripción</button>
+        </sc-if>
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.TODAY = new Date('2026-06-14T12:00:00');
+    this.FX = { USD: 0.92, EUR: 1 };
+    this.CATS = {
+      streaming: { label: 'Streaming', color: '#fb5b6b' },
+      music: { label: 'Música', color: '#34d399' },
+      ai: { label: 'Software / IA', color: '#818cf8' },
+      health: { label: 'Gimnasio / Salud', color: '#fb923c' },
+      hosting: { label: 'Hosting / Dominios', color: '#22d3ee' },
+      cloud: { label: 'Nube', color: '#60a5fa' },
+      games: { label: 'Juegos', color: '#c084fc' },
+      other: { label: 'Otros', color: '#94a3b8' },
+    };
+    this.SERIES = [79.4, 81.2, 88.37, 88.37, 90.36, 93.36];
+    this.MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    this.MLAB = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
+    this.state = {
+      theme: 'dark', screen: 'dashboard', headerVariant: 0,
+      sortKey: 'amount', filterCat: 'all',
+      selectedId: null, sheetOpen: false, sheetMode: 'add',
+      empty: false, displayTotal: null,
+      form: this.blankForm(),
+      subs: this.seed(),
+    };
+  }
+
+  blankForm() {
+    return { id: null, name: '', mono: '', brand: '#6f74f5', cat: 'streaming', amount: '', cur: 'EUR', cycle: 'monthly', next: '2026-07-01', method: '', status: 'active', trial: false, notes: '' };
+  }
+
+  seed() {
+    return [
+      { id: 'netflix', name: 'Netflix', mono: 'N', brand: '#e50914', cat: 'streaming', amount: 13.99, cur: 'EUR', cycle: 'monthly', next: '2026-06-17', method: 'Tarjeta ·4291', status: 'active', notes: 'Plan Estándar con anuncios' },
+      { id: 'disney', name: 'Disney+', mono: 'D', brand: '#1f80e0', cat: 'streaming', amount: 9.99, cur: 'EUR', cycle: 'monthly', next: '2026-06-16', method: 'Tarjeta ·4291', status: 'trial', trialEnd: '2026-06-16', notes: 'Prueba gratuita de 7 días — empieza a cobrar pronto' },
+      { id: 'spotify', name: 'Spotify', mono: 'S', brand: '#1db954', cat: 'music', amount: 10.99, cur: 'EUR', cycle: 'monthly', next: '2026-06-22', method: 'PayPal', status: 'active', notes: 'Premium Individual' },
+      { id: 'chatgpt', name: 'ChatGPT Plus', mono: 'G', brand: '#10a37f', cat: 'ai', amount: 20, cur: 'USD', cycle: 'monthly', next: '2026-06-28', method: 'Tarjeta ·8830', status: 'active', notes: 'Facturado en dólares' },
+      { id: 'icloud', name: 'iCloud+', mono: 'i', brand: '#3693f3', cat: 'cloud', amount: 2.99, cur: 'EUR', cycle: 'monthly', next: '2026-06-30', method: 'Tarjeta ·4291', status: 'active', notes: '200 GB' },
+      { id: 'gym', name: 'Basic-Fit', mono: 'B', brand: '#f7901e', cat: 'health', amount: 39.99, cur: 'EUR', cycle: 'monthly', next: '2026-07-01', method: 'Tarjeta ·4291', status: 'active', notes: 'Cuota Premium' },
+      { id: 'psplus', name: 'PlayStation Plus', mono: 'P', brand: '#0070d1', cat: 'games', amount: 71.99, cur: 'EUR', cycle: 'yearly', next: '2026-11-12', method: 'PayPal', status: 'active', notes: 'Plan Extra anual' },
+      { id: 'domain', name: 'midominio.com', mono: '@', brand: '#06b6d4', cat: 'hosting', amount: 11.98, cur: 'EUR', cycle: 'yearly', next: '2027-03-04', method: 'Tarjeta ·8830', status: 'active', notes: 'Renovación de dominio .com' },
+    ];
+  }
+
+  // ---- helpers ----
+  eur(amount, cur) { return amount * (this.FX[cur] || 1); }
+  monthly(s) {
+    const e = this.eur(s.amount, s.cur);
+    if (s.cycle === 'yearly') return e / 12;
+    if (s.cycle === 'quarterly') return e / 3;
+    if (s.cycle === 'weekly') return e * 52 / 12;
+    return e;
+  }
+  fmt(n) { return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+  fmt0(n) { return Math.round(n).toLocaleString('es-ES') + ' €'; }
+  money(amount, cur) { return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (cur === 'USD' ? ' $' : ' €'); }
+  days(dateStr) { const d = new Date(dateStr + 'T12:00:00'); return Math.round((d - this.TODAY) / 86400000); }
+  when(n) { if (n < 0) return 'vencido'; if (n === 0) return 'hoy'; if (n === 1) return 'mañana'; if (n < 31) return 'en ' + n + ' días'; const m = Math.round(n / 30); return 'en ' + m + (m === 1 ? ' mes' : ' meses'); }
+  fdate(dateStr) { const d = new Date(dateStr + 'T12:00:00'); return d.getDate() + ' ' + this.MONTHS[d.getMonth()].toLowerCase(); }
+  cycleShort(c) { return ({ monthly: 'mes', yearly: 'año', quarterly: 'trim', weekly: 'sem' })[c] || 'mes'; }
+  cycleWord(c) { return ({ monthly: 'mensual', yearly: 'anual', quarterly: 'trimestral', weekly: 'semanal' })[c] || 'mensual'; }
+  monoStyle(brand, size) {
+    const s = size || 42;
+    return `width:${s}px;height:${s}px;border-radius:${Math.round(s*0.3)}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${Math.round(s*0.42)}px;color:#fff;background:${brand};box-shadow:0 3px 10px ${brand}44;`;
+  }
+
+  componentDidMount() { this.animateTotal(); }
+  componentWillUnmount() { if (this._timer) clearInterval(this._timer); }
+  animateTotal() {
+    if (this._timer) clearInterval(this._timer);
+    const target = this.totalMonthly();
+    const start = Date.now(), dur = 850;
+    this._timer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      this.setState({ displayTotal: target * e });
+      if (p >= 1) { clearInterval(this._timer); this._timer = null; }
+    }, 28);
+  }
+
+  totalMonthly() { return this.state.subs.filter(s => s.status === 'active').reduce((a, s) => a + this.monthly(s), 0); }
+
+  // ---- navigation / actions ----
+  go(screen) { this.setState({ screen }); window.scrollTo(0, 0); }
+  openDetail(id) { this.setState({ selectedId: id, screen: 'detail' }); window.scrollTo(0, 0); }
+  openAdd() { this.setState({ sheetOpen: true, sheetMode: 'add', form: this.blankForm() }); }
+  editCurrent() {
+    const s = this.state.subs.find(x => x.id === this.state.selectedId);
+    if (!s) return;
+    this.setState({ sheetOpen: true, sheetMode: 'edit', form: { id: s.id, name: s.name, mono: s.mono, brand: s.brand, cat: s.cat, amount: String(s.amount).replace('.', ','), cur: s.cur, cycle: s.cycle, next: s.next, method: s.method, status: s.status, trial: s.status === 'trial', notes: s.notes || '' } });
+  }
+  closeSheet() { this.setState({ sheetOpen: false }); }
+  setForm(k, v) { this.setState(st => ({ form: { ...st.form, [k]: v } })); }
+  saveForm() {
+    const f = this.state.form;
+    const amt = parseFloat(String(f.amount).replace(',', '.')) || 0;
+    const status = f.trial ? 'trial' : (f.status === 'trial' ? 'active' : f.status);
+    const mono = f.mono || (f.name.trim()[0] || '?').toUpperCase();
+    const rec = { id: f.id || ('s' + Date.now()), name: f.name.trim() || 'Sin nombre', mono, brand: f.brand, cat: f.cat, amount: amt, cur: f.cur, cycle: f.cycle, next: f.next, method: f.method, status, trialEnd: f.trial ? f.next : undefined, notes: f.notes };
+    this.setState(st => {
+      const exists = st.subs.some(s => s.id === rec.id);
+      const subs = exists ? st.subs.map(s => s.id === rec.id ? { ...s, ...rec } : s) : [...st.subs, rec];
+      return { subs, sheetOpen: false, empty: false };
+    }, () => this.animateTotal());
+  }
+  deleteForm() {
+    const id = this.state.form.id;
+    this.setState(st => ({ subs: st.subs.filter(s => s.id !== id), sheetOpen: false, screen: 'dashboard' }), () => this.animateTotal());
+  }
+  togglePause() {
+    const id = this.state.selectedId;
+    this.setState(st => ({ subs: st.subs.map(s => s.id === id ? { ...s, status: s.status === 'paused' ? 'active' : 'paused' } : s) }), () => this.animateTotal());
+  }
+  toggleCancel() {
+    const id = this.state.selectedId;
+    this.setState(st => ({ subs: st.subs.map(s => s.id === id ? { ...s, status: s.status === 'cancelled' ? 'active' : 'cancelled' } : s) }), () => this.animateTotal());
+  }
+  showEmpty() { this.setState({ empty: true, screen: 'dashboard' }); }
+  restoreDemo() { this.setState({ empty: false, subs: this.seed(), screen: 'dashboard' }, () => this.animateTotal()); }
+
+  // ---- charts ----
+  donut(cats, size, stroke) {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r, cx = size / 2;
+    let off = 0;
+    const segs = cats.filter(x => x.pct > 0).map((cat, i) => {
+      const len = c * cat.pct / 100;
+      const el = React.createElement('circle', { key: i, cx, cy: cx, r, fill: 'none', stroke: cat.color, strokeWidth: stroke, strokeDasharray: `${len} ${c - len}`, strokeDashoffset: -off, transform: `rotate(-90 ${cx} ${cx})` });
+      off += len; return el;
+    });
+    return React.createElement('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}` }, ...segs);
+  }
+  spark(series, w, h, fill) {
+    const max = Math.max(...series) * 1.08, min = Math.min(...series) * 0.94;
+    const pts = series.map((v, i) => [i / (series.length - 1) * w, h - (v - min) / (max - min) * h]);
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const area = line + ` L${w} ${h} L0 ${h} Z`;
+    const accent = '#6f74f5';
+    return React.createElement('svg', { width: '100%', height: h, viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', style: { display: 'block', overflow: 'visible' } },
+      React.createElement('defs', null, React.createElement('linearGradient', { id: 'sg', x1: 0, y1: 0, x2: 0, y2: 1 }, React.createElement('stop', { offset: '0%', stopColor: accent, stopOpacity: 0.32 }), React.createElement('stop', { offset: '100%', stopColor: accent, stopOpacity: 0 }))),
+      fill ? React.createElement('path', { d: area, fill: 'url(#sg)' }) : null,
+      React.createElement('path', { d: line, fill: 'none', stroke: accent, strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' }),
+      React.createElement('circle', { cx: pts[pts.length - 1][0], cy: pts[pts.length - 1][1], r: 3.4, fill: accent, stroke: '#fff', strokeWidth: 1.4 })
+    );
+  }
+  bars(values, w, h, color) {
+    const max = Math.max(...values) * 1.12;
+    const n = values.length, gap = 7, bw = (w - gap * (n - 1)) / n;
+    return React.createElement('svg', { width: '100%', height: h, viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', style: { display: 'block' } },
+      ...values.map((v, i) => {
+        const bh = Math.max(3, v / max * h);
+        return React.createElement('rect', { key: i, x: i * (bw + gap), y: h - bh, width: bw, height: bh, rx: 4, fill: i === n - 1 ? color : color + '66' });
+      })
+    );
+  }
+
+  renderVals() {
+    const st = this.state, S = st.subs;
+    const active = S.filter(s => s.status === 'active');
+    const total = this.totalMonthly();
+    const last = this.SERIES[this.SERIES.length - 2];
+    const deltaPct = ((total - last) / last * 100);
+    const deltaUp = deltaPct >= 0;
+
+    // category breakdown
+    const map = {};
+    active.forEach(s => { map[s.cat] = (map[s.cat] || 0) + this.monthly(s); });
+    let cats = Object.keys(map).map(k => ({ key: k, label: this.CATS[k].label, color: this.CATS[k].color, amount: map[k], pct: total ? map[k] / total * 100 : 0 }));
+    cats.sort((a, b) => b.amount - a.amount);
+    const maxCat = Math.max(1, ...cats.map(c => c.amount));
+    cats = cats.map(c => ({ ...c,
+      amountText: this.fmt(c.amount), pctText: Math.round(c.pct) + '%',
+      dotStyle: `width:9px;height:9px;border-radius:3px;flex-shrink:0;background:${c.color};`,
+      segStyle: `flex:${Math.max(0.04, c.pct)};background:${c.color};`,
+      barStyle: `height:100%;width:${(c.amount / maxCat * 100).toFixed(1)}%;background:${c.color};border-radius:5px;`,
+    }));
+    const catsTop = cats.slice(0, 4);
+
+    // header variant
+    const hv = st.headerVariant;
+    const headerTabs = ['A', 'B', 'C'].map((l, i) => ({ label: l, onClick: () => this.setState({ headerVariant: i }),
+      style: `width:24px;height:24px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;background:${hv === i ? 'var(--accent)' : 'transparent'};color:${hv === i ? '#fff' : 'var(--dim)'};` }));
+
+    // upcoming (active or trial, sorted by date, next 35 days-ish, show up to 6)
+    const up = S.filter(s => s.status === 'active' || s.status === 'trial').map(s => ({ s, d: this.days(s.next) })).filter(x => x.d <= 40).sort((a, b) => a.d - b.d);
+    const upcoming = up.map(({ s, d }) => {
+      const trial = s.status === 'trial';
+      const soon = d <= 3;
+      return {
+        id: s.id, name: s.name, mono: s.mono, whenText: trial ? '1er cobro ' + this.when(d) : this.when(d),
+        amountText: this.money(s.amount, s.cur), sub: this.fdate(s.next) + (trial ? ' · prueba' : ''),
+        onOpen: () => this.openDetail(s.id),
+        cardStyle: `flex-shrink:0;width:158px;scroll-snap-align:start;background:${trial ? 'linear-gradient(165deg, color-mix(in srgb, var(--warn) 16%, var(--panel)), var(--panel))' : 'var(--panel)'};border:1px solid ${trial ? 'color-mix(in srgb, var(--warn) 45%, transparent)' : 'var(--line)'};border-radius:18px;padding:15px;cursor:pointer;`,
+        monoStyle: this.monoStyle(s.brand, 34),
+        pillStyle: `font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:7px;white-space:nowrap;background:${soon || trial ? 'color-mix(in srgb, var(--warn) 22%, transparent)' : 'var(--panel2)'};color:${soon || trial ? 'var(--warn)' : 'var(--dim)'};`,
+      };
+    });
+
+    // list (filter + sort)
+    let list = S.slice();
+    if (st.filterCat !== 'all') list = list.filter(s => s.cat === st.filterCat);
+    const order = { active: 0, trial: 1, paused: 2, cancelled: 3 };
+    if (st.sortKey === 'amount') list.sort((a, b) => this.monthly(b) - this.monthly(a));
+    else if (st.sortKey === 'date') list.sort((a, b) => this.days(a.next) - this.days(b.next));
+    else list.sort((a, b) => a.name.localeCompare(b.name));
+    list.sort((a, b) => (order[a.status] - order[b.status]));
+    const listSubs = list.map(s => {
+      const inactive = s.status === 'paused' || s.status === 'cancelled';
+      const badge = s.status === 'trial' ? 'Prueba' : s.status === 'paused' ? 'En pausa' : s.status === 'cancelled' ? 'Cancelada' : '';
+      const badgeColor = s.status === 'trial' ? 'var(--warn)' : 'var(--faint)';
+      return {
+        id: s.id, name: s.name, mono: s.mono, badge,
+        badgeStyle: `font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:5px;background:color-mix(in srgb, ${badgeColor} 18%, transparent);color:${badgeColor};text-transform:uppercase;letter-spacing:0.02em;flex-shrink:0;`,
+        metaText: this.CATS[s.cat].label + ' · ' + this.fdate(s.next),
+        amountText: this.money(s.amount, s.cur), cycleText: '/ ' + this.cycleShort(s.cycle),
+        onOpen: () => this.openDetail(s.id),
+        rowStyle: `display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 15px;cursor:pointer;opacity:${inactive ? 0.55 : 1};`,
+        monoStyle: this.monoStyle(s.brand, 42),
+      };
+    });
+
+    // filter chips
+    const usedCats = Array.from(new Set(S.map(s => s.cat)));
+    const filterChips = [{ k: 'all', label: 'Todas' }].concat(usedCats.map(k => ({ k, label: this.CATS[k].label }))).map(f => ({
+      label: f.label, onClick: () => this.setState({ filterCat: f.k }),
+      style: `flex-shrink:0;padding:7px 13px;border-radius:10px;border:1px solid ${st.filterCat === f.k ? 'transparent' : 'var(--line)'};cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap;background:${st.filterCat === f.k ? 'var(--accent)' : 'var(--panel)'};color:${st.filterCat === f.k ? '#fff' : 'var(--dim)'};`,
+    }));
+    const sortLabel = { amount: 'Importe', date: 'Fecha', name: 'Nombre' }[st.sortKey];
+
+    // ranking
+    const ranking = active.slice().sort((a, b) => this.monthly(b) - this.monthly(a)).slice(0, 5).map((s, i) => ({
+      rank: i + 1, name: s.name, mono: s.mono, amountText: this.fmt(this.monthly(s)),
+      monoStyle: this.monoStyle(s.brand, 34), onOpen: () => this.openDetail(s.id),
+    }));
+
+    // savings (monthly subs → hypothetical annual)
+    const savings = active.filter(s => s.cycle === 'monthly').sort((a, b) => this.monthly(b) - this.monthly(a)).slice(0, 3).map(s => {
+      const yr = this.eur(s.amount, s.cur) * 12;
+      const ann = yr * 0.83;
+      return { name: s.name, mono: s.mono, monoStyle: this.monoStyle(s.brand, 30),
+        saveText: this.fmt0(yr - ann), monthlyYear: this.fmt0(yr), annualPrice: this.fmt0(ann) };
+    });
+
+    const monthLabels = this.MLAB.map(m => ({ label: m }));
+
+    // detail
+    let detail = null;
+    const sel = S.find(s => s.id === st.selectedId);
+    if (sel) {
+      const d = this.days(sel.next), trial = sel.status === 'trial';
+      const cat = this.CATS[sel.cat];
+      let banner = '', bannerStyle = '';
+      if (trial) { banner = '⚡ Prueba gratuita — empieza a cobrar ' + this.when(d) + ' (' + this.fdate(sel.next) + ')'; bannerStyle = `background:color-mix(in srgb, var(--warn) 16%, var(--panel));border:1px solid color-mix(in srgb, var(--warn) 45%, transparent);color:var(--warn);font-size:13px;font-weight:600;padding:13px 15px;border-radius:14px;margin-bottom:14px;`; }
+      else if (sel.status === 'paused') { banner = '⏸ En pausa — no cuenta para tu gasto mensual'; bannerStyle = `background:var(--panel);border:1px solid var(--line2);color:var(--dim);font-size:13px;font-weight:600;padding:13px 15px;border-radius:14px;margin-bottom:14px;`; }
+      else if (sel.status === 'cancelled') { banner = '✕ Cancelada — se conserva el histórico'; bannerStyle = `background:var(--panel);border:1px solid var(--line2);color:var(--dim);font-size:13px;font-weight:600;padding:13px 15px;border-radius:14px;margin-bottom:14px;`; }
+      const facts = [
+        { k: 'Próximo cobro', v: this.fdate(sel.next) + ' · ' + this.when(d), color: 'var(--tx)' },
+        { k: 'Coste mensual', v: this.fmt(this.monthly(sel)), color: 'var(--tx)' },
+        { k: 'Ciclo', v: this.cycleWord(sel.cycle), color: 'var(--tx)' },
+        { k: 'Método de pago', v: sel.method || '—', color: 'var(--tx)' },
+      ];
+      const histVals = Array.from({ length: 6 }, () => sel.amount * (0.97 + Math.random() * 0.06));
+      const histLabels = (() => {
+        const out = []; const base = new Date(sel.next + 'T12:00:00');
+        for (let i = 5; i >= 0; i--) { const dd = new Date(base); dd.setMonth(dd.getMonth() - i - 1); out.push({ label: this.MONTHS[dd.getMonth()] }); }
+        return out;
+      })();
+      detail = {
+        name: sel.name, mono: sel.mono, catLabel: cat.label,
+        amountText: this.money(sel.amount, sel.cur), cycleShort: this.cycleShort(sel.cycle),
+        fxNote: sel.cur === 'USD' ? '≈ ' + this.fmt(this.monthly(sel)) + ' /mes en EUR' : '',
+        banner, bannerStyle, facts, histLabels,
+        notes: sel.notes || '',
+        pauseLabel: sel.status === 'paused' ? 'Reanudar' : 'Pausar',
+        cancelLabel: sel.status === 'cancelled' ? 'Reactivar suscripción' : 'Cancelar suscripción',
+        cancelColor: sel.status === 'cancelled' ? 'var(--good)' : 'var(--bad)',
+      };
+      var detailHeroStyle = `position:relative;background:linear-gradient(165deg, ${sel.brand}, color-mix(in srgb, ${sel.brand} 55%, #000));`;
+      var detailMonoStyle = `width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;color:${sel.brand};background:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.35);`;
+      var historyEl = this.bars(histVals, 280, 70, sel.brand);
+    }
+
+    // sheet form styles
+    const f = st.form;
+    const catChips = Object.keys(this.CATS).map(k => {
+      const on = f.cat === k, col = this.CATS[k].color;
+      return { label: this.CATS[k].label, onClick: () => this.setForm('cat', k) || this.setForm('brand', col),
+        dotStyle: `width:8px;height:8px;border-radius:3px;background:${col};`,
+        style: `display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;border:1px solid ${on ? col : 'var(--line2)'};background:${on ? `color-mix(in srgb, ${col} 18%, var(--panel))` : 'var(--panel)'};color:${on ? 'var(--tx)' : 'var(--dim)'};` };
+    });
+    const cycleOpts = [['monthly', 'Mensual'], ['yearly', 'Anual'], ['quarterly', 'Trim.'], ['weekly', 'Sem.']].map(([k, l]) => ({
+      label: l, onClick: () => this.setForm('cycle', k),
+      style: `flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;background:${f.cycle === k ? 'var(--accent)' : 'transparent'};color:${f.cycle === k ? '#fff' : 'var(--dim)'};` }));
+    const curBtn = (on) => `flex:1;width:36px;padding:8px 0;border-radius:9px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;background:${on ? 'var(--accent)' : 'transparent'};color:${on ? '#fff' : 'var(--dim)'};`;
+
+    const navBtn = (on) => `display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 14px;color:${on ? 'var(--accent2)' : 'var(--faint)'};`;
+    const themeBtn = (on) => `padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;background:${on ? 'var(--accent)' : 'transparent'};color:${on ? '#fff' : 'var(--dim)'};`;
+
+    return {
+      theme: st.theme, themeIcon: st.theme === 'dark' ? '☀' : '☾',
+      toggleTheme: () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      setDark: () => this.setState({ theme: 'dark' }), setLight: () => this.setState({ theme: 'light' }),
+      darkBtnStyle: themeBtn(st.theme === 'dark'), lightBtnStyle: themeBtn(st.theme === 'light'),
+      screenTitle: ({ dashboard: 'Subs', stats: 'Estadísticas', detail: 'Detalle', settings: 'Ajustes' })[st.screen] || 'Subs',
+
+      isDashboard: st.screen === 'dashboard' && !st.empty,
+      isEmpty: st.screen === 'dashboard' && st.empty,
+      isStats: st.screen === 'stats', isDetail: st.screen === 'detail', isSettings: st.screen === 'settings',
+      showNav: st.screen !== 'detail',
+
+      totalText: this.fmt(st.displayTotal == null ? total : st.displayTotal), totalShort: this.fmt0(total),
+      annualText: this.fmt0(total * 12), activeCount: active.length, listCount: list.length,
+      trendText: (deltaUp ? '↑ ' : '↓ ') + Math.abs(deltaPct).toFixed(1).replace('.', ',') + '%',
+      trendStyle: `font-size:13px;font-weight:700;padding:5px 9px;border-radius:9px;margin-bottom:6px;background:color-mix(in srgb, ${deltaUp ? 'var(--bad)' : 'var(--good)'} 16%, transparent);color:${deltaUp ? 'var(--bad)' : 'var(--good)'};`,
+
+      headerTabs, showSpark: hv === 1, showComp: hv === 2,
+      sparkEl: this.spark(this.SERIES, 300, 56, true),
+
+      cats, catsTop,
+      donutSmallEl: this.donut(cats, 132, 18),
+      evolutionEl: this.spark(this.SERIES, 320, 90, true),
+      monthLabels,
+
+      upcoming, listSubs, filterChips, sortLabel,
+      cycleSort: () => this.setState(s => ({ sortKey: s.sortKey === 'amount' ? 'date' : s.sortKey === 'date' ? 'name' : 'amount' })),
+
+      ranking, savings,
+
+      detail, detailHeroStyle, detailMonoStyle, historyEl,
+      goBack: () => this.go('dashboard'),
+      editCurrent: () => this.editCurrent(),
+      togglePause: () => this.togglePause(), toggleCancel: () => this.toggleCancel(),
+
+      goDash: () => this.go('dashboard'), goStats: () => this.go('stats'), goSettings: () => this.go('settings'),
+      navDashStyle: navBtn(st.screen === 'dashboard'), navStatsStyle: navBtn(st.screen === 'stats'), navSetStyle: navBtn(st.screen === 'settings'),
+      openAdd: () => this.openAdd(), showEmpty: () => this.showEmpty(), restoreDemo: () => this.restoreDemo(),
+
+      sheetOpen: st.sheetOpen, sheetTitle: st.sheetMode === 'edit' ? 'Editar suscripción' : 'Nueva suscripción',
+      saveLabel: st.sheetMode === 'edit' ? 'Guardar cambios' : 'Añadir suscripción', canDelete: st.sheetMode === 'edit',
+      form: { name: f.name, amount: f.amount, next: f.next, method: f.method, notes: f.notes },
+      onName: (e) => this.setForm('name', e.target.value),
+      onAmount: (e) => this.setForm('amount', e.target.value),
+      onNext: (e) => this.setForm('next', e.target.value),
+      onMethod: (e) => this.setForm('method', e.target.value),
+      onNotes: (e) => this.setForm('notes', e.target.value),
+      setEUR: () => this.setForm('cur', 'EUR'), setUSD: () => this.setForm('cur', 'USD'),
+      eurBtnStyle: curBtn(f.cur === 'EUR'), usdBtnStyle: curBtn(f.cur === 'USD'),
+      catChips, cycleOpts,
+      toggleTrial: () => this.setForm('trial', !f.trial),
+      trialToggleStyle: `width:46px;height:27px;border-radius:14px;border:none;cursor:pointer;padding:3px;display:flex;background:${f.trial ? 'var(--accent)' : 'var(--line2)'};justify-content:${f.trial ? 'flex-end' : 'flex-start'};transition:all .2s;`,
+      trialKnobStyle: `width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
+      closeSheet: () => this.closeSheet(), saveForm: () => this.saveForm(), deleteForm: () => this.deleteForm(),
+    };
+  }
+}
+</script>
+</body>
+</html>

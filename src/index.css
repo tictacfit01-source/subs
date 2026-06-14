@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: #0c0d11; }
+#root { min-height: 100vh; }
+
+button, input, textarea { font-family: inherit; }
+
+/* ===== App theme tokens (ported from the Claude Design prototype) ===== */
+.subsapp {
+  --bg: #0c0d11; --bg2: #101218; --panel: #16181f; --panel2: #1c1f28;
+  --line: rgba(255,255,255,0.07); --line2: rgba(255,255,255,0.12);
+  --tx: #f3f4f7; --dim: #9aa1ad; --faint: #636b78;
+  --accent: #6f74f5; --accent2: #8b8ff7; --accentSoft: rgba(111,116,245,0.16);
+  --good: #34d399; --warn: #fbbf24; --bad: #fb6b7c;
+  --shadow: 0 8px 30px rgba(0,0,0,0.45);
+  color-scheme: dark;
+
+  min-height: 100vh;
+  background: radial-gradient(120% 70% at 50% -10%, var(--bg2), var(--bg) 60%);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: var(--tx);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  justify-content: center;
+}
+.subsapp[data-theme="light"] {
+  --bg: #eceef2; --bg2: #f4f5f8; --panel: #ffffff; --panel2: #f6f7fa;
+  --line: rgba(15,18,30,0.08); --line2: rgba(15,18,30,0.14);
+  --tx: #14161d; --dim: #59616e; --faint: #99a0ad;
+  --accent: #5a5ef0; --accent2: #4b50e6; --accentSoft: rgba(90,94,240,0.12);
+  --shadow: 0 10px 34px rgba(20,22,40,0.12);
+  color-scheme: light;
+}
+
+.subsapp ::-webkit-scrollbar { width: 0; height: 0; }
+
+/* The phone-style frame each screen lives in */
+.frame {
+  width: 100%;
+  max-width: 460px;
+  min-height: 100vh;
+  position: relative;
+  background: var(--bg);
+  box-shadow: 0 0 80px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes sheetUp { from { transform: translateY(101%); } to { transform: translateY(0); } }
+@keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2.5px solid var(--line2); border-top-color: var(--accent);
+  animation: spin .7s linear infinite;
+}
