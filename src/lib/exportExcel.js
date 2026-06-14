@@ -50,18 +50,31 @@ export async function exportToExcel(subs) {
       '% del total': total ? Math.round((map[k] / total) * 100) + '%' : '0%',
     }))
 
+  // --- Hoja: Por método de pago ---
+  const methodMap = {}
+  active.forEach((s) => {
+    const k = (s.method && s.method.trim()) || 'Sin asignar'
+    methodMap[k] = (methodMap[k] || 0) + monthly(s)
+  })
+  const methodRows = Object.keys(methodMap)
+    .sort((a, b) => methodMap[b] - methodMap[a])
+    .map((k) => ({ 'Método de pago': k, 'Gasto mensual (€)': round2(methodMap[k]), 'Gasto anual (€)': round2(methodMap[k] * 12) }))
+
   const wb = XLSX.utils.book_new()
   const wsResumen = XLSX.utils.json_to_sheet(resumen)
   const wsSubs = XLSX.utils.json_to_sheet(subsRows.length ? subsRows : [{ Nombre: '(sin suscripciones)' }])
   const wsCat = XLSX.utils.json_to_sheet(catRows.length ? catRows : [{ Categoría: '(sin datos)' }])
+  const wsMethod = XLSX.utils.json_to_sheet(methodRows.length ? methodRows : [{ 'Método de pago': '(sin datos)' }])
 
   wsResumen['!cols'] = [{ wch: 26 }, { wch: 22 }]
   wsSubs['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 8 }, { wch: 11 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 11 }, { wch: 30 }]
   wsCat['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 12 }]
+  wsMethod['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 16 }]
 
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
   XLSX.utils.book_append_sheet(wb, wsSubs, 'Suscripciones')
   XLSX.utils.book_append_sheet(wb, wsCat, 'Por categoría')
+  XLSX.utils.book_append_sheet(wb, wsMethod, 'Por método')
 
   XLSX.writeFile(wb, `subs-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }

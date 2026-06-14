@@ -13,6 +13,7 @@ export const CATS = {
   internet: { label: 'Internet / Móvil', color: '#14b8a6' },
   utilities: { label: 'Luz / Suministros', color: '#eab308' },
   rent: { label: 'Alquiler', color: '#f472b6' },
+  insurance: { label: 'Seguros', color: '#84cc16' },
   other: { label: 'Otros', color: '#94a3b8' },
 }
 

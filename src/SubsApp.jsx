@@ -225,6 +225,17 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   cats.sort((a, b) => b.amount - a.amount)
   const maxCat = Math.max(1, ...cats.map((c) => c.amount))
 
+  // spend grouped by payment method (free text, e.g. bank name)
+  const methodMap = {}
+  active.forEach((s) => {
+    const k = (s.method && s.method.trim()) || 'Sin asignar'
+    methodMap[k] = (methodMap[k] || 0) + monthly(s)
+  })
+  const methodBreakdown = Object.keys(methodMap)
+    .map((k) => ({ method: k, amount: methodMap[k] }))
+    .sort((a, b) => b.amount - a.amount)
+  const maxMethod = Math.max(1, ...methodBreakdown.map((m) => m.amount))
+
   // upcoming (active or trial, within ~40 days)
   const upcoming = subs
     .filter((s) => s.status === 'active' || s.status === 'trial')
@@ -523,6 +534,27 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                 ))}
               </div>
             </div>
+
+            {methodBreakdown.length > 0 && (
+              <>
+                <div style={{ margin: '24px 0 12px', fontSize: 16, fontWeight: 700 }}>Por método de pago</div>
+                <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 20, padding: 20 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {methodBreakdown.map((mb) => (
+                      <div key={mb.method}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{mb.method}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(mb.amount)}</span>
+                        </div>
+                        <div style={{ height: 8, borderRadius: 5, background: 'var(--panel2)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${((mb.amount / maxMethod) * 100).toFixed(1)}%`, background: 'var(--accent)', borderRadius: 5 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div style={{ margin: '24px 0 12px', fontSize: 16, fontWeight: 700 }}>Las más caras</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
