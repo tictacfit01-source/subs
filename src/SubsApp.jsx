@@ -264,13 +264,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const showNav = screen !== 'detail'
 
   const themeIcon = theme === 'dark' ? '☀' : '☾'
-  const screenTitle = { dashboard: 'Subs', stats: 'Estadísticas', upcoming: 'Próximos cobros', detail: 'Detalle', settings: 'Ajustes' }[screen] || 'Subs'
-
-  // all upcoming charges (active or trial), soonest first — for the "Próximos" tab
-  const upcomingAll = subs
-    .filter((s) => s.status === 'active' || s.status === 'trial')
-    .map((s) => ({ s, d: days(s.next) }))
-    .sort((a, b) => a.d - b.d)
+  const screenTitle = { dashboard: 'Subs', stats: 'Estadísticas', calendar: 'Calendario', detail: 'Detalle', settings: 'Ajustes' }[screen] || 'Subs'
 
   // ---- shared small styles ----
   const dot = (color) => ({ width: 9, height: 9, borderRadius: 3, flexShrink: 0, background: color, display: 'inline-block' })
@@ -329,7 +323,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
       {/* ===== SCROLL AREA ===== */}
       <div style={{ flex: 1, padding: '0 0 110px' }}>
         {/* ============ EMPTY ============ */}
-        {isEmpty && (screen === 'dashboard' || screen === 'stats' || screen === 'upcoming') && (
+        {isEmpty && (screen === 'dashboard' || screen === 'stats' || screen === 'calendar') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '80px 32px', minHeight: '60vh' }}>
             <div style={{ width: 88, height: 88, borderRadius: 26, background: 'linear-gradient(160deg, var(--panel2), var(--panel))', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow)', marginBottom: 22 }}>
               <div style={{ fontSize: 38 }}>🪄</div>
@@ -575,45 +569,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
         )}
 
         {/* ============ UPCOMING ============ */}
-        {screen === 'upcoming' && !isEmpty && (
-          <div style={{ padding: 18 }}>
-            <div style={{ fontSize: 13, color: 'var(--dim)', fontWeight: 600, marginBottom: 12 }}>
-              {upcomingAll.length} {upcomingAll.length === 1 ? 'cobro programado' : 'cobros programados'}
-            </div>
-            {upcomingAll.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--faint)', textAlign: 'center', padding: '40px 0' }}>Nada en el horizonte 🎉</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                {upcomingAll.map(({ s, d }) => {
-                  const trial = s.status === 'trial'
-                  const soon = d <= 3
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => openDetail(s.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 13,
-                        background: trial ? 'linear-gradient(165deg, color-mix(in srgb, var(--warn) 16%, var(--panel)), var(--panel))' : 'var(--panel)',
-                        border: `1px solid ${trial ? 'color-mix(in srgb, var(--warn) 45%, transparent)' : 'var(--line)'}`,
-                        borderRadius: 16, padding: '13px 15px', cursor: 'pointer',
-                      }}
-                    >
-                      <div style={monoStyle(s.brand, 42)}>{s.mono}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>{fdate(s.next) + (trial ? ' · prueba' : '')}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 14.5, fontWeight: 800, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>{money(s.amount, s.cur)}</div>
-                        <div style={{ fontSize: 11.5, fontWeight: 700, color: soon || trial ? 'var(--warn)' : 'var(--faint)', marginTop: 2 }}>{trial ? '1er cobro ' + when(d) : when(d)}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {screen === 'calendar' && !isEmpty && <CalendarView subs={subs} onOpen={openDetail} />}
 
         {/* ============ DETAIL ============ */}
         {screen === 'detail' && sel && (
@@ -700,7 +656,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <NavBtn icon="◷" label="Próximos" on={screen === 'upcoming'} onClick={() => go('upcoming')} />
+          <NavBtn icon="◷" label="Calendario" on={screen === 'calendar'} onClick={() => go('calendar')} />
           <NavBtn icon="⚙" label="Ajustes" on={screen === 'settings'} onClick={() => go('settings')} />
         </div>
       )}
@@ -717,6 +673,129 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
           onSave={saveForm}
           onDelete={deleteForm}
         />
+      )}
+    </div>
+  )
+}
+
+const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+function stepDate(d, cycle, dir) {
+  const nd = new Date(d)
+  if (cycle === 'weekly') nd.setDate(nd.getDate() + 7 * dir)
+  else if (cycle === 'yearly') nd.setFullYear(nd.getFullYear() + dir)
+  else if (cycle === 'quarterly') nd.setMonth(nd.getMonth() + 3 * dir)
+  else nd.setMonth(nd.getMonth() + dir)
+  return nd
+}
+
+// Day-of-month numbers when this subscription charges within (y, m).
+function chargeDaysInMonth(sub, y, m) {
+  if (!sub.next) return []
+  const monthStart = new Date(y, m, 1)
+  const monthEnd = new Date(y, m, new Date(y, m + 1, 0).getDate(), 23, 59)
+  let d = new Date(sub.next + 'T12:00:00')
+  let g = 0
+  while (d > monthEnd && g++ < 3000) d = stepDate(d, sub.cycle, -1)
+  g = 0
+  while (d < monthStart && g++ < 3000) d = stepDate(d, sub.cycle, 1)
+  const out = []
+  g = 0
+  while (d <= monthEnd && g++ < 100) {
+    if (d >= monthStart) out.push(d.getDate())
+    d = stepDate(d, sub.cycle, 1)
+  }
+  return out
+}
+
+function CalendarView({ subs, onOpen }) {
+  const now = new Date()
+  const [cur, setCur] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  const { y, m } = cur
+  const active = subs.filter((s) => s.status === 'active' || s.status === 'trial')
+
+  const byDay = {}
+  active.forEach((s) => {
+    chargeDaysInMonth(s, y, m).forEach((day) => {
+      ;(byDay[day] = byDay[day] || []).push(s)
+    })
+  })
+
+  const daysInMonth = new Date(y, m + 1, 0).getDate()
+  const firstWeekday = (new Date(y, m, 1).getDay() + 6) % 7 // 0 = Monday
+  const cells = []
+  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day)
+  const isToday = (day) => now.getFullYear() === y && now.getMonth() === m && now.getDate() === day
+
+  const list = []
+  Object.keys(byDay)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach((day) => byDay[day].forEach((s) => list.push({ day, s })))
+  const monthTotal = list.reduce((acc, { s }) => acc + eur(s.amount, s.cur), 0)
+
+  const prev = () => setCur(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
+  const next = () => setCur(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
+  const navBtn = { width: 34, height: 34, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--panel)', color: 'var(--dim)', cursor: 'pointer', fontSize: 16 }
+
+  return (
+    <div style={{ padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <button onClick={prev} style={navBtn}>‹</button>
+        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' }}>{MONTHS_FULL[m]} {y}</div>
+        <button onClick={next} style={navBtn}>›</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 6 }}>
+        {WEEKDAYS.map((w, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--faint)' }}>{w}</div>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {cells.map((day, i) => {
+          if (day == null) return <div key={'e' + i} />
+          const charges = byDay[day] || []
+          const has = charges.length > 0
+          return (
+            <div key={day} style={{ aspectRatio: '1', borderRadius: 10, border: '1px solid ' + (isToday(day) ? 'var(--accent)' : 'var(--line)'), background: has ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+              <div style={{ fontSize: 12.5, fontWeight: isToday(day) ? 800 : 600, color: isToday(day) ? 'var(--accent2)' : has ? 'var(--tx)' : 'var(--dim)' }}>{day}</div>
+              {has && (
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {charges.slice(0, 3).map((s, j) => (
+                    <span key={j} style={{ width: 5, height: 5, borderRadius: '50%', background: s.brand }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '22px 0 12px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>Cobros de {MONTHS_FULL[m].toLowerCase()}</div>
+        {list.length > 0 && <div style={{ fontSize: 12.5, color: 'var(--dim)', fontWeight: 600 }}>{fmt(monthTotal)}</div>}
+      </div>
+      {list.length === 0 ? (
+        <div style={{ fontSize: 13.5, color: 'var(--faint)', textAlign: 'center', padding: '24px 0' }}>Sin cobros este mes 🎉</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {list.map(({ day, s }, i) => (
+            <div key={i} onClick={() => onOpen(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px', cursor: 'pointer' }}>
+              <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>{day}</div>
+                <div style={{ fontSize: 9.5, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase' }}>{MONTHS[m]}</div>
+              </div>
+              <div style={monoStyle(s.brand, 34)}>{s.mono}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {s.name}{s.status === 'trial' ? ' · prueba' : ''}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{money(s.amount, s.cur)}</div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
