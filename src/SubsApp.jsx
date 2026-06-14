@@ -674,18 +674,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
               </button>
             </div>
 
-            <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '22px 0 10px' }}>Apariencia</div>
-            <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>Tema</div>
-                <div style={{ display: 'flex', gap: 4, background: 'var(--panel2)', borderRadius: 10, padding: 3 }}>
-                  {[['dark', 'Oscuro'], ['light', 'Claro']].map(([k, lbl]) => (
-                    <button key={k} onClick={() => setTheme(k)} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: theme === k ? 'var(--accent)' : 'transparent', color: theme === k ? '#fff' : 'var(--dim)' }}>{lbl}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '22px 0 10px' }}>Moneda</div>
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -744,9 +732,9 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
 
 function NavBtn({ icon, label, on, onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 14px', color: on ? 'var(--accent2)' : 'var(--faint)' }}>
-      <div style={{ fontSize: 19 }}>{icon}</div>
-      <div style={{ fontSize: 10.5, fontWeight: 600 }}>{label}</div>
+    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', color: on ? 'var(--accent2)' : 'var(--faint)' }}>
+      <div style={{ fontSize: 21 }}>{icon}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</div>
     </button>
   )
 }
