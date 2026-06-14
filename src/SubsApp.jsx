@@ -700,16 +700,12 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
 
       {/* ===== BOTTOM NAV ===== */}
       {showNav && (
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 30, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', background: 'color-mix(in srgb, var(--bg) 85%, transparent)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--line)' }}>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around' }}>
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 30, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', alignItems: 'center', justifyItems: 'center', padding: '10px 8px calc(10px + env(safe-area-inset-bottom))', background: 'color-mix(in srgb, var(--bg) 85%, transparent)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--line)' }}>
           <NavBtn icon="▦" label="Panel" on={screen === 'dashboard'} onClick={() => go('dashboard')} />
           <NavBtn icon="◔" label="Stats" on={screen === 'stats'} onClick={() => go('stats')} />
-        </div>
-        <button onClick={openAdd} style={{ flexShrink: 0, width: 54, height: 54, borderRadius: 18, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontSize: 26, cursor: 'pointer', boxShadow: '0 8px 22px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -12 }}>+</button>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around' }}>
+          <button onClick={openAdd} style={{ width: 54, height: 54, borderRadius: 18, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontSize: 26, lineHeight: 1, cursor: 'pointer', boxShadow: '0 8px 22px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -12 }}>+</button>
           <NavBtn icon="◷" label="Próximos" on={screen === 'upcoming'} onClick={() => go('upcoming')} />
           <NavBtn icon="⚙" label="Ajustes" on={screen === 'settings'} onClick={() => go('settings')} />
-        </div>
         </div>
       )}
 
@@ -732,9 +728,9 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
 
 function NavBtn({ icon, label, on, onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', color: on ? 'var(--accent2)' : 'var(--faint)' }}>
+    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 4px', color: on ? 'var(--accent2)' : 'var(--faint)' }}>
       <div style={{ fontSize: 21 }}>{icon}</div>
-      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</div>
     </button>
   )
 }
