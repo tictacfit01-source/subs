@@ -3,8 +3,6 @@ import { supabase, isSupabaseConfigured } from './lib/supabase.js'
 import Login from './auth/Login.jsx'
 import SubsApp from './SubsApp.jsx'
 
-const DEMO_SESSION = { user: { id: 'demo', email: 'demo@local' } }
-
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('subs-theme') || 'dark')
   const [session, setSession] = useState(null)
@@ -30,9 +28,8 @@ export default function App() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
 
   let content
-  if (!ready) content = <Splash />
-  else if (!isSupabaseConfigured)
-    content = <SubsApp session={DEMO_SESSION} demo theme={theme} setTheme={setTheme} toggleTheme={toggleTheme} />
+  if (!isSupabaseConfigured) content = <ConfigNotice />
+  else if (!ready) content = <Splash />
   else if (!session) content = <Login />
   else content = <SubsApp session={session} theme={theme} setTheme={setTheme} toggleTheme={toggleTheme} />
 
@@ -47,6 +44,21 @@ function Splash() {
   return (
     <div className="frame" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div className="spinner" />
+    </div>
+  )
+}
+
+function ConfigNotice() {
+  return (
+    <div className="frame" style={{ alignItems: 'center', justifyContent: 'center', padding: '32px 26px', textAlign: 'center' }}>
+      <div style={{ maxWidth: 340 }}>
+        <div style={{ fontSize: 34, marginBottom: 12 }}>🔌</div>
+        <div style={{ fontSize: 18, fontWeight: 800 }}>Falta conectar Supabase</div>
+        <div style={{ fontSize: 13.5, color: 'var(--dim)', marginTop: 10, lineHeight: 1.6 }}>
+          Define <code style={{ color: 'var(--accent2)' }}>VITE_SUPABASE_URL</code> y{' '}
+          <code style={{ color: 'var(--accent2)' }}>VITE_SUPABASE_ANON_KEY</code> en un archivo <code style={{ color: 'var(--accent2)' }}>.env</code> y reinicia.
+        </div>
+      </div>
     </div>
   )
 }

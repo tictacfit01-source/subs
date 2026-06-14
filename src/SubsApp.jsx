@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { supabase, fetchSubs, insertSub, updateSub, patchSub, removeSub, seedDemo } from './lib/supabase.js'
+import { supabase, fetchSubs, insertSub, updateSub, patchSub, removeSub } from './lib/supabase.js'
 import {
   CATS, MONTHS, eur, monthly, fmt, fmt0, money, days, when, fdate,
   cycleShort, cycleWord, monoStyle, addDays,
@@ -32,7 +32,7 @@ function lastMonths(n) {
   return out
 }
 
-export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = false }) {
+export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const userId = session.user.id
 
   const [subs, setSubs] = useState([])
@@ -181,20 +181,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = 
     if (s) setStatus(s.id, s.status === 'cancelled' ? 'active' : 'cancelled')
   }
 
-  async function handleSeedDemo() {
-    setBusy(true)
-    try {
-      const created = await seedDemo(userId)
-      setSubs((prev) => [...prev, ...created])
-      setScreen('dashboard')
-    } catch (e) {
-      console.error(e)
-      alert('No se pudieron cargar los datos de ejemplo: ' + e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const go = (s) => {
     setScreen(s)
     window.scrollTo(0, 0)
@@ -306,9 +292,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = 
             S
           </div>
           <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em' }}>{screenTitle}</div>
-          {demo && (
-            <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', padding: '3px 7px', borderRadius: 6, background: 'color-mix(in srgb, var(--warn) 18%, transparent)', color: 'var(--warn)' }}>DEMO</span>
-          )}
         </div>
         <button
           onClick={toggleTheme}
@@ -343,9 +326,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = 
             </div>
             <button onClick={openAdd} style={{ marginTop: 24, padding: '14px 26px', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 22px var(--accentSoft)' }}>
               + Añadir suscripción
-            </button>
-            <button onClick={handleSeedDemo} disabled={busy} style={{ marginTop: 12, padding: 10, background: 'transparent', border: 'none', color: 'var(--dim)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
-              o cargar datos de ejemplo
             </button>
           </div>
         )}
@@ -686,24 +666,13 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = 
         {screen === 'settings' && (
           <div style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 10 }}>Cuenta</div>
-            {demo ? (
-              <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Modo demo</div>
-                <div style={{ fontSize: 12.5, color: 'var(--dim)', marginTop: 4, lineHeight: 1.5 }}>
-                  Estás probando con datos de ejemplo en memoria; los cambios no se guardan. Conecta Supabase
-                  (claves en <code style={{ color: 'var(--accent2)' }}>.env</code>, guía en el README) para tu cuenta real con
-                  login y persistencia.
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--dim)' }}>Sesión iniciada como</div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginTop: 3 }}>{session.user.email}</div>
-                <button onClick={() => supabase?.auth.signOut()} style={{ marginTop: 14, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
+            <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--dim)' }}>Sesión iniciada como</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 3 }}>{session.user.email}</div>
+              <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 14, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+                Cerrar sesión
+              </button>
+            </div>
 
             <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '22px 0 10px' }}>Apariencia</div>
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
@@ -736,22 +705,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme, demo = 
               </div>
             </div>
 
-            {subs.length === 0 && (
-              <>
-                <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '22px 0 10px' }}>Datos</div>
-                <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
-                  <button onClick={handleSeedDemo} disabled={busy} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx)' }}>Cargar datos de ejemplo</div>
-                      <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>Añade 8 suscripciones demo para probar</div>
-                    </div>
-                    <span style={{ color: 'var(--faint)' }}>↺</span>
-                  </button>
-                </div>
-              </>
-            )}
-
-            <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--faint)', marginTop: 28 }}>Subs · control de suscripciones · v1</div>
+<div style={{ textAlign: 'center', fontSize: 12, color: 'var(--faint)', marginTop: 28 }}>Subs · control de suscripciones · v1</div>
           </div>
         )}
       </div>

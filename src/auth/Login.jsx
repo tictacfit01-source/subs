@@ -1,26 +1,40 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 
+function translateError(msg = '') {
+  const m = msg.toLowerCase()
+  if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.'
+  if (m.includes('already registered') || m.includes('already been registered')) return 'Ese correo ya tiene cuenta. Inicia sesión.'
+  if (m.includes('at least')) return 'La contraseña debe tener al menos 6 caracteres.'
+  if (m.includes('unable to validate email') || m.includes('invalid email')) return 'Correo no válido.'
+  return msg || 'Algo ha fallado, inténtalo de nuevo.'
+}
+
 export default function Login() {
+  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const [password, setPassword] = useState('')
+  const [status, setStatus] = useState('idle') // idle | loading
   const [error, setError] = useState('')
 
   async function submit(e) {
     e.preventDefault()
-    const value = email.trim()
-    if (!value) return
-    setStatus('sending')
+    const mail = email.trim()
+    if (!mail || !password) return
+    setStatus('loading')
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: value,
-      options: { emailRedirectTo: window.location.origin },
-    })
-    if (error) {
-      setStatus('error')
-      setError(error.message)
-    } else {
-      setStatus('sent')
+    try {
+      if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({ email: mail, password })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: mail, password })
+        if (error) throw error
+      }
+      // On success, App's onAuthStateChange picks up the session and swaps screens.
+    } catch (err) {
+      setStatus('idle')
+      setError(translateError(err.message))
     }
   }
 
@@ -34,6 +48,8 @@ export default function Login() {
     fontSize: 15,
     outline: 'none',
   }
+
+  const isSignup = mode === 'signup'
 
   return (
     <div className="frame" style={{ justifyContent: 'center', alignItems: 'center', padding: '32px 24px' }}>
@@ -58,84 +74,63 @@ export default function Login() {
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 16 }}>Subs</div>
           <div style={{ fontSize: 14, color: 'var(--dim)', marginTop: 6, textAlign: 'center', lineHeight: 1.5 }}>
-            Tu control de suscripciones.<br />Entra con tu correo.
+            Tu control de suscripciones.<br />
+            {isSignup ? 'Crea tu cuenta para empezar.' : 'Entra con tu correo y contraseña.'}
           </div>
         </div>
 
-        {status === 'sent' ? (
-          <div
+        <form onSubmit={submit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tucorreo@ejemplo.com"
+            autoComplete="email"
+            autoFocus
+            style={inputStyle}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={isSignup ? 'Contraseña (mín. 6 caracteres)' : 'Contraseña'}
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
+            style={{ ...inputStyle, marginTop: 10 }}
+          />
+          <button
+            type="submit"
+            disabled={status === 'loading'}
             style={{
-              background: 'var(--panel)',
-              border: '1px solid var(--line)',
-              borderRadius: 16,
-              padding: '22px 20px',
-              textAlign: 'center',
+              width: '100%',
+              marginTop: 12,
+              padding: 15,
+              borderRadius: 14,
+              border: 'none',
+              background: 'var(--accent)',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: status === 'loading' ? 'default' : 'pointer',
+              opacity: status === 'loading' ? 0.7 : 1,
+              boxShadow: '0 8px 22px var(--accentSoft)',
             }}
           >
-            <div style={{ fontSize: 30, marginBottom: 8 }}>✉️</div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Revisa tu correo</div>
-            <div style={{ fontSize: 13.5, color: 'var(--dim)', marginTop: 6, lineHeight: 1.5 }}>
-              Te enviamos un enlace de acceso a <strong style={{ color: 'var(--tx)' }}>{email.trim()}</strong>. Ábrelo en este
-              dispositivo para entrar.
-            </div>
-            <button
-              onClick={() => {
-                setStatus('idle')
-                setError('')
-              }}
-              style={{
-                marginTop: 16,
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--dim)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-              }}
-            >
-              Usar otro correo
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
-              autoComplete="email"
-              autoFocus
-              style={inputStyle}
-            />
-            <button
-              type="submit"
-              disabled={status === 'sending'}
-              style={{
-                width: '100%',
-                marginTop: 12,
-                padding: 15,
-                borderRadius: 14,
-                border: 'none',
-                background: 'var(--accent)',
-                color: '#fff',
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: status === 'sending' ? 'default' : 'pointer',
-                opacity: status === 'sending' ? 0.7 : 1,
-                boxShadow: '0 8px 22px var(--accentSoft)',
-              }}
-            >
-              {status === 'sending' ? 'Enviando…' : 'Enviar enlace de acceso'}
-            </button>
-            {status === 'error' && (
-              <div style={{ marginTop: 12, fontSize: 13, color: 'var(--bad)', textAlign: 'center' }}>{error}</div>
-            )}
-          </form>
-        )}
+            {status === 'loading' ? 'Un momento…' : isSignup ? 'Crear cuenta' : 'Iniciar sesión'}
+          </button>
+          {error && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--bad)', textAlign: 'center' }}>{error}</div>}
+        </form>
 
-        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--faint)', marginTop: 24, lineHeight: 1.5 }}>
-          Sin contraseñas. Recibes un enlace mágico y entras.
+        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--dim)', marginTop: 20 }}>
+          {isSignup ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
+          <button
+            onClick={() => {
+              setMode(isSignup ? 'signin' : 'signup')
+              setError('')
+            }}
+            style={{ background: 'none', border: 'none', color: 'var(--accent2)', fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: 0 }}
+          >
+            {isSignup ? 'Inicia sesión' : 'Regístrate'}
+          </button>
         </div>
       </div>
     </div>
