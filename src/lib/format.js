@@ -10,6 +10,9 @@ export const CATS = {
   hosting: { label: 'Hosting / Dominios', color: '#22d3ee' },
   cloud: { label: 'Nube', color: '#60a5fa' },
   games: { label: 'Juegos', color: '#c084fc' },
+  internet: { label: 'Internet / Móvil', color: '#14b8a6' },
+  utilities: { label: 'Luz / Suministros', color: '#eab308' },
+  rent: { label: 'Alquiler', color: '#f472b6' },
   other: { label: 'Otros', color: '#94a3b8' },
 }
 

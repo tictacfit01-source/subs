@@ -224,7 +224,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   }))
   cats.sort((a, b) => b.amount - a.amount)
   const maxCat = Math.max(1, ...cats.map((c) => c.amount))
-  const catsTop = cats.slice(0, 4)
 
   // upcoming (active or trial, within ~40 days)
   const upcoming = subs
@@ -420,7 +419,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                   </div>
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 9, minWidth: 0 }}>
-                  {catsTop.map((c) => (
+                  {cats.map((c) => (
                     <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={dot(c.color)} />
                       <div style={{ fontSize: 12.5, color: 'var(--tx)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
