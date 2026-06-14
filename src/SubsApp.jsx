@@ -31,6 +31,10 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [pwdOpen, setPwdOpen] = useState(false)
+  const [pwd, setPwd] = useState('')
+  const [pwdMsg, setPwdMsg] = useState('')
+  const [pwdBusy, setPwdBusy] = useState(false)
   const timerRef = useRef(null)
 
   // ---- load ----
@@ -185,6 +189,24 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
       alert('No se pudo exportar el Excel: ' + e.message)
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function handleChangePwd() {
+    if (pwd.length < 6) {
+      setPwdMsg('La contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+    setPwdBusy(true)
+    setPwdMsg('')
+    const { error } = await supabase.auth.updateUser({ password: pwd })
+    setPwdBusy(false)
+    if (error) {
+      setPwdMsg(error.message)
+    } else {
+      setPwdMsg('Contraseña actualizada ✓')
+      setPwd('')
+      setPwdOpen(false)
     }
   }
 
@@ -611,7 +633,23 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
               <div style={{ fontSize: 12, color: 'var(--dim)' }}>Sesión iniciada como</div>
               <div style={{ fontSize: 14, fontWeight: 700, marginTop: 3 }}>{session.user.email}</div>
-              <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 14, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+
+              {!pwdOpen ? (
+                <button onClick={() => { setPwdOpen(true); setPwdMsg('') }} style={{ marginTop: 14, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--tx)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+                  Cambiar contraseña
+                </button>
+              ) : (
+                <div style={{ marginTop: 14 }}>
+                  <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="Nueva contraseña (mín. 6)" autoComplete="new-password" style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--line2)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14, outline: 'none' }} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={handleChangePwd} disabled={pwdBusy} style={{ flex: 1, padding: 11, borderRadius: 11, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', opacity: pwdBusy ? 0.7 : 1 }}>{pwdBusy ? 'Guardando…' : 'Guardar'}</button>
+                    <button onClick={() => { setPwdOpen(false); setPwd(''); setPwdMsg('') }} style={{ padding: '11px 14px', borderRadius: 11, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--dim)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+              {pwdMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: pwdMsg.includes('✓') ? 'var(--good)' : 'var(--bad)', textAlign: 'center' }}>{pwdMsg}</div>}
+
+              <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 10, width: '100%', padding: 12, borderRadius: 12, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
                 Cerrar sesión
               </button>
             </div>
