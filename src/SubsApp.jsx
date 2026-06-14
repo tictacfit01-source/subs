@@ -48,6 +48,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const [displayTotal, setDisplayTotal] = useState(null)
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const timerRef = useRef(null)
 
   // ---- load ----
@@ -189,6 +190,20 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     setSelectedId(id)
     setScreen('detail')
     window.scrollTo(0, 0)
+  }
+
+  async function handleExport() {
+    if (!subs.length) return
+    setExporting(true)
+    try {
+      const { exportToExcel } = await import('./lib/exportExcel.js')
+      await exportToExcel(subs)
+    } catch (e) {
+      console.error(e)
+      alert('No se pudo exportar el Excel: ' + e.message)
+    } finally {
+      setExporting(false)
+    }
   }
 
   // ================= derived data =================
@@ -693,7 +708,18 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
               </div>
             </div>
 
-<div style={{ textAlign: 'center', fontSize: 12, color: 'var(--faint)', marginTop: 28 }}>Subs · control de suscripciones · v1</div>
+            <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', margin: '22px 0 10px' }}>Datos</div>
+            <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
+              <button onClick={handleExport} disabled={subs.length === 0 || exporting} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'transparent', border: 'none', cursor: subs.length === 0 ? 'default' : 'pointer', opacity: subs.length === 0 ? 0.5 : 1 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx)' }}>Descargar Excel</div>
+                  <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>{exporting ? 'Generando…' : 'Todas tus suscripciones y estadísticas (.xlsx)'}</div>
+                </div>
+                <span style={{ color: 'var(--accent2)', fontSize: 18 }}>⬇</span>
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--faint)', marginTop: 28 }}>Subs · control de suscripciones · v1</div>
           </div>
         )}
       </div>
@@ -703,7 +729,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
         <div style={{ position: 'sticky', bottom: 0, zIndex: 30, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', alignItems: 'center', justifyItems: 'center', padding: '10px 8px calc(10px + env(safe-area-inset-bottom))', background: 'color-mix(in srgb, var(--bg) 85%, transparent)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--line)' }}>
           <NavBtn icon="▦" label="Panel" on={screen === 'dashboard'} onClick={() => go('dashboard')} />
           <NavBtn icon="◔" label="Stats" on={screen === 'stats'} onClick={() => go('stats')} />
-          <button onClick={openAdd} style={{ width: 54, height: 54, borderRadius: 18, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontSize: 26, lineHeight: 1, cursor: 'pointer', boxShadow: '0 8px 22px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -12 }}>+</button>
+          <button onClick={openAdd} style={{ width: 48, height: 48, borderRadius: 15, border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontSize: 24, lineHeight: 1, cursor: 'pointer', boxShadow: '0 6px 18px var(--accentSoft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
           <NavBtn icon="◷" label="Próximos" on={screen === 'upcoming'} onClick={() => go('upcoming')} />
           <NavBtn icon="⚙" label="Ajustes" on={screen === 'settings'} onClick={() => go('settings')} />
         </div>
