@@ -4,7 +4,7 @@ import {
   CATS, MONTHS, eur, monthly, fmt, fmt0, money, days, when, fdate,
   cycleShort, cycleWord, monoStyle, addDays,
 } from './lib/format.js'
-import { Donut, Spark, Bars } from './lib/charts.jsx'
+import { Donut } from './lib/charts.jsx'
 
 function blankForm() {
   return {
@@ -14,23 +14,6 @@ function blankForm() {
   }
 }
 
-// Until we track real history, build an illustrative 6-month ramp that ends
-// at the real current monthly total.
-function buildSeries(total) {
-  const base = total > 0 ? total : 0
-  return [0.85, 0.87, 0.95, 0.95, 0.97, 1].map((f) => +(base * f).toFixed(2))
-}
-function lastMonths(n) {
-  const out = []
-  const d = new Date()
-  d.setDate(1)
-  for (let i = n - 1; i >= 0; i--) {
-    const dd = new Date(d)
-    dd.setMonth(dd.getMonth() - i)
-    out.push(MONTHS[dd.getMonth()])
-  }
-  return out
-}
 
 export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const userId = session.user.id
@@ -38,7 +21,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const [subs, setSubs] = useState([])
   const [loading, setLoading] = useState(true)
   const [screen, setScreen] = useState('dashboard')
-  const [headerVariant, setHeaderVariant] = useState(0)
   const [sortKey, setSortKey] = useState('amount')
   const [filterCat, setFilterCat] = useState('all')
   const [selectedId, setSelectedId] = useState(null)
@@ -208,11 +190,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
 
   // ================= derived data =================
   const active = subs.filter((s) => s.status === 'active')
-  const series = buildSeries(total)
-  const monthLabels = lastMonths(6)
-  const last = series[series.length - 2]
-  const deltaPct = last ? ((total - last) / last) * 100 : 0
-  const deltaUp = deltaPct >= 0
 
   // category breakdown
   const map = {}
@@ -349,26 +326,9 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
         {screen === 'dashboard' && !isEmpty && (
           <>
             <div style={{ padding: '18px 18px 0' }}>
-              {/* header variant switcher */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 13, color: 'var(--faint)', fontWeight: 600 }}>
-                  {lastMonths(1)[0]} {new Date().getFullYear()}
-                </div>
-                <div style={{ display: 'flex', gap: 4, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 9, padding: 3 }}>
-                  {['A', 'B', 'C'].map((l, i) => (
-                    <button
-                      key={l}
-                      onClick={() => setHeaderVariant(i)}
-                      style={{
-                        width: 24, height: 24, borderRadius: 7, border: 'none', cursor: 'pointer',
-                        fontSize: 11, fontWeight: 700,
-                        background: headerVariant === i ? 'var(--accent)' : 'transparent',
-                        color: headerVariant === i ? '#fff' : 'var(--dim)',
-                      }}
-                    >
-                      {l}
-                    </button>
-                  ))}
+                  {MONTHS[new Date().getMonth()]} {new Date().getFullYear()}
                 </div>
               </div>
 
@@ -377,13 +337,8 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                 <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(80% 120% at 90% -20%, var(--accentSoft), transparent 60%)', pointerEvents: 'none' }} />
                 <div style={{ position: 'relative' }}>
                   <div style={{ fontSize: 12.5, color: 'var(--dim)', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Gasto mensual</div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: 6 }}>
-                    <div style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                      {fmt(displayTotal == null ? total : displayTotal)}
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, padding: '5px 9px', borderRadius: 9, marginBottom: 6, background: `color-mix(in srgb, ${deltaUp ? 'var(--bad)' : 'var(--good)'} 16%, transparent)`, color: deltaUp ? 'var(--bad)' : 'var(--good)' }}>
-                      {(deltaUp ? '↑ ' : '↓ ') + Math.abs(deltaPct).toFixed(1).replace('.', ',') + '%'}
-                    </div>
+                  <div style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', marginTop: 6 }}>
+                    {fmt(displayTotal == null ? total : displayTotal)}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12 }}>
                     <div style={{ fontSize: 13.5, color: 'var(--dim)' }}>
@@ -392,29 +347,6 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                     <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--faint)' }} />
                     <div style={{ fontSize: 13.5, color: 'var(--dim)' }}>{active.length} activas</div>
                   </div>
-
-                  {headerVariant === 1 && (
-                    <div style={{ marginTop: 16 }}>
-                      <Spark series={series} w={300} h={56} fill id="spark-hero" />
-                    </div>
-                  )}
-                  {headerVariant === 2 && (
-                    <div style={{ marginTop: 16 }}>
-                      <div style={{ display: 'flex', height: 10, borderRadius: 6, overflow: 'hidden', gap: 2 }}>
-                        {cats.map((c) => (
-                          <div key={c.key} style={{ flex: Math.max(0.04, c.pct), background: c.color }} />
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
-                        {catsTop.map((c) => (
-                          <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--dim)' }}>
-                            <span style={dot(c.color)} />
-                            {c.label} {Math.round(c.pct)}%
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -552,13 +484,8 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow)' }}>
               <div style={{ fontSize: 13, color: 'var(--dim)', fontWeight: 600 }}>Gasto mensual total</div>
               <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</div>
-              <div style={{ marginTop: 16 }}>
-                <Spark series={series} w={320} h={90} fill id="spark-stats" />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                {monthLabels.map((m, i) => (
-                  <div key={i} style={{ fontSize: 10.5, color: 'var(--faint)', fontWeight: 600 }}>{m}</div>
-                ))}
+              <div style={{ fontSize: 13.5, color: 'var(--dim)', marginTop: 6 }}>
+                {fmt0(total * 12)} <span style={{ color: 'var(--faint)' }}>/ año</span> · {active.length} activas
               </div>
             </div>
 
@@ -830,16 +757,6 @@ function Detail({ sel, onBack, onEdit, onTogglePause, onToggleCancel }) {
               <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 4, color: 'var(--tx)' }}>{f.v}</div>
             </div>
           ))}
-        </div>
-
-        <div style={{ margin: '22px 0 10px', fontSize: 15, fontWeight: 700 }}>Histórico de pagos</div>
-        <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: '18px 16px 12px' }}>
-          <Bars values={histVals} w={280} h={70} color={sel.brand} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            {histLabels.map((h, i) => (
-              <div key={i} style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600 }}>{h}</div>
-            ))}
-          </div>
         </div>
 
         {sel.notes && (
