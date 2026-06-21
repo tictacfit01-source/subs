@@ -3,6 +3,7 @@
 export const FX = { USD: 0.92, EUR: 1 }
 
 export const CATS = {
+  // --- Suscripciones y servicios ---
   streaming: { label: 'Streaming', color: '#fb5b6b' },
   music: { label: 'Música', color: '#34d399' },
   ai: { label: 'Software / IA', color: '#818cf8' },
@@ -14,14 +15,30 @@ export const CATS = {
   utilities: { label: 'Luz / Suministros', color: '#eab308' },
   rent: { label: 'Alquiler', color: '#f472b6' },
   insurance: { label: 'Seguros', color: '#84cc16' },
+  // --- Gastos del día a día ---
+  groceries: { label: 'Supermercado', color: '#16a34a' },
+  food: { label: 'Restaurantes / Comida', color: '#ef4444' },
+  coffee: { label: 'Café / Desayuno', color: '#b45309' },
+  transport: { label: 'Transporte', color: '#0ea5e9' },
+  shopping: { label: 'Compras', color: '#d946ef' },
+  leisure: { label: 'Ocio', color: '#a855f7' },
+  home: { label: 'Hogar', color: '#f59e0b' },
+  travel: { label: 'Viajes', color: '#0891b2' },
+  education: { label: 'Educación', color: '#6366f1' },
+  pets: { label: 'Mascotas', color: '#d6a76b' },
+  // --- Resto ---
   other: { label: 'Otros', color: '#94a3b8' },
 }
+
+// Safe lookup: never throw if a row has an unknown/legacy category.
+export const catOf = (key) => CATS[key] || CATS.other
 
 export const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 export const eur = (amount, cur) => amount * (FX[cur] || 1)
 
 export function monthly(s) {
+  if (s.cycle === 'once') return 0 // pago único: no es gasto recurrente
   const e = eur(s.amount, s.cur)
   if (s.cycle === 'yearly') return e / 12
   if (s.cycle === 'quarterly') return e / 3
@@ -70,8 +87,10 @@ export function fdate(dateStr) {
   return d.getDate() + ' ' + MONTHS[d.getMonth()].toLowerCase()
 }
 
-export const cycleShort = (c) => ({ monthly: 'mes', yearly: 'año', quarterly: 'trim', weekly: 'sem' })[c] || 'mes'
-export const cycleWord = (c) => ({ monthly: 'mensual', yearly: 'anual', quarterly: 'trimestral', weekly: 'semanal' })[c] || 'mensual'
+export const cycleShort = (c) => ({ monthly: 'mes', yearly: 'año', quarterly: 'trim', weekly: 'sem', once: 'único' })[c] || 'mes'
+export const cycleWord = (c) => ({ monthly: 'mensual', yearly: 'anual', quarterly: 'trimestral', weekly: 'semanal', once: 'pago único' })[c] || 'mensual'
+// Suffix shown next to the price, e.g. "/ mes" or "pago único".
+export const cyclePer = (c) => (c === 'once' ? 'pago único' : '/ ' + cycleShort(c))
 
 // Inline-style object for the brand monogram badge.
 export function monoStyle(brand, size) {
