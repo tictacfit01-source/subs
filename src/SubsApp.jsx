@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase, fetchSubs, insertSub, updateSub, patchSub, removeSub } from './lib/supabase.js'
 import {
   CATS, catOf, MONTHS, eur, monthly, fmt, fmt0, money, days, when, fdate,
-  cycleWord, cyclePer, monoStyle, addDays,
+  cycleWord, cyclePer, monoStyle, addDays, FX,
 } from './lib/format.js'
 import { Donut } from './lib/charts.jsx'
 
@@ -14,8 +14,14 @@ function blankForm() {
   }
 }
 
+// Accepts "12,34", "12.34" and "1.234,56" (es-ES thousands + decimal comma).
+function parseAmount(v) {
+  const s = String(v).trim()
+  const norm = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s
+  return parseFloat(norm) || 0
+}
 
-export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
+export default function SubsApp({ session, theme, toggleTheme, recovery }) {
   const userId = session.user.id
 
   const [subs, setSubs] = useState([])
@@ -24,9 +30,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const [sortKey, setSortKey] = useState('amount')
   const [filterCat, setFilterCat] = useState('all')
   const [selectedId, setSelectedId] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [sheetMode, setSheetMode] = useState('add')
-  const [form, setForm] = useState(blankForm())
+  const [sheetInit, setSheetInit] = useState(null) // null = sheet closed; form data = open
   const [displayTotal, setDisplayTotal] = useState(null)
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -35,7 +39,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   const [pwd, setPwd] = useState('')
   const [pwdMsg, setPwdMsg] = useState('')
   const [pwdBusy, setPwdBusy] = useState(false)
-  const timerRef = useRef(null)
+  const displayRef = useRef(0)
 
   // ---- load ----
   useEffect(() => {
@@ -58,54 +62,48 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     }
   }, [])
 
+  // Arriving from a password-reset link: jump straight to the new-password form.
+  useEffect(() => {
+    if (recovery) {
+      setScreen('settings')
+      setPwdOpen(true)
+      setPwdMsg('')
+    }
+  }, [recovery])
+
   // ---- count-up animation of the total ----
   const total = subs.filter((s) => s.status === 'active').reduce((a, s) => a + monthly(s), 0)
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    const target = total
-    const from = displayTotal == null ? 0 : displayTotal
-    const start = Date.now()
+    const from = displayRef.current
+    const start = performance.now()
     const dur = 850
-    timerRef.current = setInterval(() => {
-      const p = Math.min(1, (Date.now() - start) / dur)
-      const e = 1 - Math.pow(1 - p, 3)
-      setDisplayTotal(from + (target - from) * e)
-      if (p >= 1) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-        setDisplayTotal(target)
-      }
-    }, 28)
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let raf = requestAnimationFrame(function tick(now) {
+      const p = Math.min(1, (now - start) / dur)
+      const v = from + (total - from) * (1 - Math.pow(1 - p, 3))
+      displayRef.current = v
+      setDisplayTotal(v)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    })
+    return () => cancelAnimationFrame(raf)
   }, [total])
 
   // ---- form helpers ----
-  const setField = (k, v) => setForm((prev) => ({ ...prev, [k]: v }))
-
   function openAdd() {
-    setSheetMode('add')
-    setForm(blankForm())
-    setSheetOpen(true)
+    setSheetInit(blankForm())
   }
   function editCurrent() {
     const s = subs.find((x) => x.id === selectedId)
     if (!s) return
-    setSheetMode('edit')
-    setForm({
+    setSheetInit({
       id: s.id, name: s.name, mono: s.mono, brand: s.brand, cat: s.cat,
       amount: String(s.amount).replace('.', ','), cur: s.cur, cycle: s.cycle,
       next: s.next, method: s.method, status: s.status, trial: s.status === 'trial',
       notes: s.notes || '',
     })
-    setSheetOpen(true)
   }
 
-  async function saveForm() {
-    const f = form
-    const amt = parseFloat(String(f.amount).replace(',', '.')) || 0
+  async function saveForm(f) {
+    const amt = parseAmount(f.amount)
     const status = f.trial ? 'trial' : f.status === 'trial' ? 'active' : f.status
     const mono = f.mono || (f.name.trim()[0] || '?').toUpperCase()
     const sub = {
@@ -116,13 +114,13 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     setBusy(true)
     try {
       if (f.id) {
-        const updated = await updateSub(f.id, sub, userId)
+        const updated = await updateSub(f.id, sub)
         setSubs((prev) => prev.map((s) => (s.id === f.id ? updated : s)))
       } else {
         const created = await insertSub(sub, userId)
         setSubs((prev) => [...prev, created])
       }
-      setSheetOpen(false)
+      setSheetInit(null)
     } catch (e) {
       console.error(e)
       alert('No se pudo guardar: ' + e.message)
@@ -131,13 +129,13 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     }
   }
 
-  async function deleteForm() {
-    if (!form.id) return
+  async function deleteForm(id) {
+    if (!id) return
     setBusy(true)
     try {
-      await removeSub(form.id)
-      setSubs((prev) => prev.filter((s) => s.id !== form.id))
-      setSheetOpen(false)
+      await removeSub(id)
+      setSubs((prev) => prev.filter((s) => s.id !== id))
+      setSheetInit(null)
       setScreen('dashboard')
     } catch (e) {
       console.error(e)
@@ -199,14 +197,19 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     }
     setPwdBusy(true)
     setPwdMsg('')
-    const { error } = await supabase.auth.updateUser({ password: pwd })
-    setPwdBusy(false)
-    if (error) {
-      setPwdMsg(error.message)
-    } else {
-      setPwdMsg('Contraseña actualizada ✓')
-      setPwd('')
-      setPwdOpen(false)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwd })
+      if (error) {
+        setPwdMsg(error.message)
+      } else {
+        setPwdMsg('Contraseña actualizada ✓')
+        setPwd('')
+        setPwdOpen(false)
+      }
+    } catch (e) {
+      setPwdMsg(e.message)
+    } finally {
+      setPwdBusy(false)
     }
   }
 
@@ -236,11 +239,11 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
     .sort((a, b) => b.amount - a.amount)
   const maxMethod = Math.max(1, ...methodBreakdown.map((m) => m.amount))
 
-  // upcoming (active or trial, within ~40 days)
+  // upcoming (active or trial, within 30 days — matches the header label)
   const upcoming = subs
     .filter((s) => s.status === 'active' || s.status === 'trial')
     .map((s) => ({ s, d: days(s.next) }))
-    .filter((x) => x.d <= 40)
+    .filter((x) => x.d <= 30)
     .sort((a, b) => a.d - b.d)
 
   // list (filter + sort)
@@ -252,7 +255,11 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
   else list.sort((a, b) => a.name.localeCompare(b.name))
   list.sort((a, b) => order[a.status] - order[b.status])
 
-  const usedCats = Array.from(new Set(subs.map((s) => s.cat)))
+  // stable chip order: follow CATS declaration order, unknown/legacy keys last
+  const usedSet = new Set(subs.map((s) => s.cat))
+  const usedCats = Object.keys(CATS)
+    .filter((k) => usedSet.has(k))
+    .concat([...usedSet].filter((k) => !CATS[k]))
   const filterChips = [{ k: 'all', label: 'Todas' }].concat(usedCats.map((k) => ({ k, label: catOf(k).label })))
   const sortLabel = { amount: 'Importe', date: 'Fecha', name: 'Nombre' }[sortKey]
 
@@ -392,8 +399,9 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                 const trial = s.status === 'trial'
                 const soon = d <= 3
                 return (
-                  <div
+                  <button
                     key={s.id}
+                    className="cardbtn"
                     onClick={() => openDetail(s.id)}
                     style={{
                       flexShrink: 0, width: 158, scrollSnapAlign: 'start',
@@ -413,7 +421,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                       <div style={{ fontSize: 12.5, color: 'var(--dim)', marginTop: 2 }}>{fdate(s.next) + (trial ? ' · prueba' : '')}</div>
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 12, fontVariantNumeric: 'tabular-nums' }}>{money(s.amount, s.cur)}</div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -477,8 +485,9 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                   const badge = s.status === 'trial' ? 'Prueba' : s.status === 'paused' ? 'En pausa' : s.status === 'cancelled' ? 'Cancelada' : ''
                   const badgeColor = s.status === 'trial' ? 'var(--warn)' : 'var(--faint)'
                   return (
-                    <div
+                    <button
                       key={s.id}
+                      className="cardbtn"
                       onClick={() => openDetail(s.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: '13px 15px', cursor: 'pointer', opacity: inactive ? 0.55 : 1 }}
                     >
@@ -496,7 +505,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                         <div style={{ fontSize: 14.5, fontWeight: 800, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>{money(s.amount, s.cur)}</div>
                         <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 2 }}>{cyclePer(s.cycle)}</div>
                       </div>
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -559,7 +568,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
             <div style={{ margin: '24px 0 12px', fontSize: 16, fontWeight: 700 }}>Las más caras</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {ranking.map((s, i) => (
-                <div key={s.id} onClick={() => openDetail(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 15, padding: '13px 15px', cursor: 'pointer' }}>
+                <button key={s.id} className="cardbtn" onClick={() => openDetail(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 15, padding: '13px 15px', cursor: 'pointer' }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--faint)', width: 18, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</div>
                   <div style={monoStyle(s.brand, 34)}>{s.mono}</div>
                   <div style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{s.name}</div>
@@ -567,7 +576,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                     {fmt(monthly(s))}
                     <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>/mes</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
 
@@ -656,7 +665,7 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>Tipo de cambio USD→EUR</div>
                   <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>Fijo, para normalizar el total</div>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>0,92</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{FX.USD.toLocaleString('es-ES')}</div>
               </div>
             </div>
 
@@ -693,14 +702,11 @@ export default function SubsApp({ session, theme, setTheme, toggleTheme }) {
       )}
 
       {/* ===== ADD/EDIT SHEET ===== */}
-      {sheetOpen && (
+      {sheetInit && (
         <Sheet
-          form={form}
-          mode={sheetMode}
+          initial={sheetInit}
           busy={busy}
-          setField={setField}
-          setForm={setForm}
-          onClose={() => setSheetOpen(false)}
+          onClose={() => setSheetInit(null)}
           onSave={saveForm}
           onDelete={deleteForm}
         />
@@ -781,9 +787,9 @@ function CalendarView({ subs, onOpen }) {
   return (
     <div style={{ padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <button onClick={prev} style={navBtn}>‹</button>
+        <button onClick={prev} aria-label="Mes anterior" style={navBtn}>‹</button>
         <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' }}>{MONTHS_FULL[m]} {y}</div>
-        <button onClick={next} style={navBtn}>›</button>
+        <button onClick={next} aria-label="Mes siguiente" style={navBtn}>›</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 6 }}>
@@ -799,7 +805,7 @@ function CalendarView({ subs, onOpen }) {
           const has = charges.length > 0
           const sel = selDay === day
           return (
-            <div key={day} onClick={has ? () => setSelDay(sel ? null : day) : undefined} style={{ aspectRatio: '1', borderRadius: 10, cursor: has ? 'pointer' : 'default', border: '1px solid ' + (sel ? 'var(--accent2)' : isToday(day) ? 'var(--accent)' : 'var(--line)'), background: sel ? 'color-mix(in srgb, var(--accent) 26%, var(--panel))' : has ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            <button key={day} className="cardbtn" disabled={!has} onClick={() => setSelDay(sel ? null : day)} aria-label={has ? `Día ${day}: ${charges.length} ${charges.length === 1 ? 'cobro' : 'cobros'}` : undefined} style={{ aspectRatio: '1', borderRadius: 10, cursor: has ? 'pointer' : 'default', border: '1px solid ' + (sel ? 'var(--accent2)' : isToday(day) ? 'var(--accent)' : 'var(--line)'), background: sel ? 'color-mix(in srgb, var(--accent) 26%, var(--panel))' : has ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
               <div style={{ fontSize: 12.5, fontWeight: isToday(day) || sel ? 800 : 600, color: sel || has ? 'var(--tx)' : isToday(day) ? 'var(--accent2)' : 'var(--dim)' }}>{day}</div>
               {has && (
                 <div style={{ display: 'flex', gap: 2 }}>
@@ -808,7 +814,7 @@ function CalendarView({ subs, onOpen }) {
                   ))}
                 </div>
               )}
-            </div>
+            </button>
           )
         })}
       </div>
@@ -825,8 +831,8 @@ function CalendarView({ subs, onOpen }) {
         <div style={{ fontSize: 13.5, color: 'var(--faint)', textAlign: 'center', padding: '24px 0' }}>Sin cobros este mes 🎉</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {shownList.map(({ day, s }, i) => (
-            <div key={i} onClick={() => onOpen(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px', cursor: 'pointer' }}>
+          {shownList.map(({ day, s }) => (
+            <button key={`${s.id}-${day}`} className="cardbtn" onClick={() => onOpen(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px', cursor: 'pointer' }}>
               <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>{day}</div>
                 <div style={{ fontSize: 9.5, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase' }}>{MONTHS[m]}</div>
@@ -836,7 +842,7 @@ function CalendarView({ subs, onOpen }) {
                 {s.name}{s.status === 'trial' ? ' · prueba' : ''}
               </div>
               <div style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{money(s.amount, s.cur)}</div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -903,37 +909,25 @@ function Detail({ sel, onBack, onEdit, onTogglePause, onToggleCancel }) {
     bannerStyle = { background: 'var(--panel)', border: '1px solid var(--line2)', color: 'var(--dim)', fontSize: 13, fontWeight: 600, padding: '13px 15px', borderRadius: 14, marginBottom: 14 }
   }
 
+  const nextText = sel.next ? fdate(sel.next) + ' · ' + when(d) : 'Sin fecha'
   const facts = sel.cycle === 'once'
     ? [
-        { k: 'Fecha del pago', v: fdate(sel.next) + ' · ' + when(d) },
+        { k: 'Fecha del pago', v: nextText },
         { k: 'Importe', v: money(sel.amount, sel.cur) },
         { k: 'Tipo', v: 'Pago único' },
         { k: 'Método de pago', v: sel.method || '—' },
       ]
     : [
-        { k: 'Próximo cobro', v: fdate(sel.next) + ' · ' + when(d) },
+        { k: 'Próximo cobro', v: nextText },
         { k: 'Coste mensual', v: fmt(monthly(sel)) },
         { k: 'Ciclo', v: cycleWord(sel.cycle) },
         { k: 'Método de pago', v: sel.method || '—' },
       ]
 
-  // deterministic little variation for the history chart
-  const histVals = Array.from({ length: 6 }, (_, i) => sel.amount * (0.97 + ((i * 13) % 7) / 100))
-  const histLabels = (() => {
-    const out = []
-    const base = sel.next ? new Date(sel.next + 'T12:00:00') : new Date()
-    for (let i = 5; i >= 0; i--) {
-      const dd = new Date(base)
-      dd.setMonth(dd.getMonth() - i - 1)
-      out.push(MONTHS[dd.getMonth()])
-    }
-    return out
-  })()
-
   return (
     <div style={{ animation: 'popIn .26s ease' }}>
       <div style={{ position: 'relative', background: `linear-gradient(165deg, ${sel.brand}, color-mix(in srgb, ${sel.brand} 55%, #000))` }}>
-        <button onClick={onBack} style={{ position: 'absolute', top: 16, left: 16, width: 38, height: 38, borderRadius: 12, border: '1px solid var(--line2)', background: 'rgba(0,0,0,0.22)', color: '#fff', cursor: 'pointer', fontSize: 17, backdropFilter: 'blur(8px)' }}>‹</button>
+        <button onClick={onBack} aria-label="Volver" style={{ position: 'absolute', top: 16, left: 16, width: 38, height: 38, borderRadius: 12, border: '1px solid var(--line2)', background: 'rgba(0,0,0,0.22)', color: '#fff', cursor: 'pointer', fontSize: 17, backdropFilter: 'blur(8px)' }}>‹</button>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '56px 20px 24px' }}>
           <div style={{ width: 64, height: 64, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 28, color: sel.brand, background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>{sel.mono}</div>
           <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 14, color: '#fff' }}>{sel.name}</div>
@@ -977,20 +971,36 @@ function Detail({ sel, onBack, onEdit, onTogglePause, onToggleCancel }) {
   )
 }
 
-function Sheet({ form, mode, busy, setField, setForm, onClose, onSave, onDelete }) {
-  const f = form
+function Sheet({ initial, busy, onClose, onSave, onDelete }) {
+  // The form state lives here so typing only re-renders the sheet, not the whole app.
+  const [f, setF] = useState(initial)
+  const mode = f.id ? 'edit' : 'add'
+  const setField = (k, v) => setF((prev) => ({ ...prev, [k]: v }))
+
+  // Close with Escape; keep the background from scrolling while open.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [onClose])
+
   const input = { width: '100%', padding: '13px 14px', borderRadius: 13, border: '1px solid var(--line2)', background: 'var(--panel)', color: 'var(--tx)', fontSize: 15, outline: 'none' }
   const label = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--dim)' }
   const curBtn = (on) => ({ flex: 1, width: 36, padding: '8px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, background: on ? 'var(--accent)' : 'transparent', color: on ? '#fff' : 'var(--dim)' })
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', animation: 'scrim .25s ease' }} />
-      <div style={{ position: 'relative', width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto', background: 'var(--bg2)', borderRadius: '26px 26px 0 0', borderTop: '1px solid var(--line2)', boxShadow: '0 -10px 50px rgba(0,0,0,0.5)', animation: 'sheetUp .34s cubic-bezier(.16,1,.3,1)', padding: '8px 20px 28px' }}>
+      <div onClick={onClose} aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', animation: 'scrim .25s ease' }} />
+      <div role="dialog" aria-modal="true" aria-label={mode === 'edit' ? 'Editar suscripción' : 'Nueva suscripción'} style={{ position: 'relative', width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto', background: 'var(--bg2)', borderRadius: '26px 26px 0 0', borderTop: '1px solid var(--line2)', boxShadow: '0 -10px 50px rgba(0,0,0,0.5)', animation: 'sheetUp .34s cubic-bezier(.16,1,.3,1)', padding: '8px 20px 28px' }}>
         <div style={{ width: 38, height: 4, borderRadius: 3, background: 'var(--line2)', margin: '8px auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em' }}>{mode === 'edit' ? 'Editar suscripción' : 'Nueva suscripción'}</div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--panel)', color: 'var(--dim)', cursor: 'pointer', fontSize: 15 }}>✕</button>
+          <button onClick={onClose} aria-label="Cerrar" style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--panel)', color: 'var(--dim)', cursor: 'pointer', fontSize: 15 }}>✕</button>
         </div>
 
         <label style={{ ...label, marginBottom: 7 }}>Nombre</label>
@@ -1018,7 +1028,7 @@ function Sheet({ form, mode, busy, setField, setForm, onClose, onSave, onDelete 
             return (
               <button
                 key={k}
-                onClick={() => setForm((prev) => ({ ...prev, cat: k, brand: col }))}
+                onClick={() => setF((prev) => ({ ...prev, cat: k, brand: col }))}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 11, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, border: `1px solid ${on ? col : 'var(--line2)'}`, background: on ? `color-mix(in srgb, ${col} 18%, var(--panel))` : 'var(--panel)', color: on ? 'var(--tx)' : 'var(--dim)' }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: 3, background: col }} />
@@ -1051,7 +1061,7 @@ function Sheet({ form, mode, busy, setField, setForm, onClose, onSave, onDelete 
             <div style={{ fontSize: 14, fontWeight: 600 }}>En prueba gratuita</div>
             <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>Te avisa antes del primer cobro</div>
           </div>
-          <button onClick={() => setField('trial', !f.trial)} style={{ width: 46, height: 27, borderRadius: 14, border: 'none', cursor: 'pointer', padding: 3, display: 'flex', background: f.trial ? 'var(--accent)' : 'var(--line2)', justifyContent: f.trial ? 'flex-end' : 'flex-start', transition: 'all .2s' }}>
+          <button onClick={() => setField('trial', !f.trial)} role="switch" aria-checked={f.trial} aria-label="En prueba gratuita" style={{ width: 46, height: 27, borderRadius: 14, border: 'none', cursor: 'pointer', padding: 3, display: 'flex', background: f.trial ? 'var(--accent)' : 'var(--line2)', justifyContent: f.trial ? 'flex-end' : 'flex-start', transition: 'all .2s' }}>
             <div style={{ width: 21, height: 21, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
           </button>
         </div>
@@ -1059,11 +1069,11 @@ function Sheet({ form, mode, busy, setField, setForm, onClose, onSave, onDelete 
         <label style={{ ...label, margin: '16px 0 7px' }}>Notas <span style={{ color: 'var(--faint)' }}>(opcional)</span></label>
         <textarea value={f.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Plan, recordatorios…" style={{ ...input, minHeight: 64, fontSize: 14, resize: 'none' }} />
 
-        <button onClick={onSave} disabled={busy} style={{ width: '100%', marginTop: 20, padding: 16, borderRadius: 15, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1, boxShadow: '0 8px 22px var(--accentSoft)' }}>
+        <button onClick={() => onSave(f)} disabled={busy} style={{ width: '100%', marginTop: 20, padding: 16, borderRadius: 15, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.7 : 1, boxShadow: '0 8px 22px var(--accentSoft)' }}>
           {busy ? 'Guardando…' : mode === 'edit' ? 'Guardar cambios' : 'Añadir suscripción'}
         </button>
         {mode === 'edit' && (
-          <button onClick={onDelete} disabled={busy} style={{ width: '100%', marginTop: 9, padding: 13, borderRadius: 14, border: 'none', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={() => onDelete(f.id)} disabled={busy} style={{ width: '100%', marginTop: 9, padding: 13, borderRadius: 14, border: 'none', background: 'transparent', color: 'var(--bad)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
             Eliminar suscripción
           </button>
         )}

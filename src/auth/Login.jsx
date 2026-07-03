@@ -7,6 +7,7 @@ function translateError(msg = '') {
   if (m.includes('already registered') || m.includes('already been registered')) return 'Ese correo ya tiene cuenta. Inicia sesión.'
   if (m.includes('at least')) return 'La contraseña debe tener al menos 6 caracteres.'
   if (m.includes('unable to validate email') || m.includes('invalid email')) return 'Correo no válido.'
+  if (m.includes('you can only request this')) return 'Por seguridad, espera un minuto antes de volver a intentarlo.'
   return msg || 'Algo ha fallado, inténtalo de nuevo.'
 }
 
@@ -16,6 +17,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   async function submit(e) {
     e.preventDefault()
@@ -23,6 +25,7 @@ export default function Login() {
     if (!mail || !password) return
     setStatus('loading')
     setError('')
+    setNotice('')
     try {
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email: mail, password })
@@ -35,6 +38,26 @@ export default function Login() {
     } catch (err) {
       setStatus('idle')
       setError(translateError(err.message))
+    }
+  }
+
+  async function forgotPwd() {
+    const mail = email.trim()
+    if (!mail) {
+      setError('Escribe tu correo arriba y vuelve a pulsar el enlace.')
+      return
+    }
+    setStatus('loading')
+    setError('')
+    setNotice('')
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: window.location.origin })
+      if (error) throw error
+      setNotice('Te hemos enviado un enlace para restablecer la contraseña.')
+    } catch (err) {
+      setError(translateError(err.message))
+    } finally {
+      setStatus('idle')
     }
   }
 
@@ -118,6 +141,17 @@ export default function Login() {
             {status === 'loading' ? 'Un momento…' : isSignup ? 'Crear cuenta' : 'Iniciar sesión'}
           </button>
           {error && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--bad)', textAlign: 'center' }}>{error}</div>}
+          {notice && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--good)', textAlign: 'center' }}>{notice}</div>}
+          {!isSignup && (
+            <button
+              type="button"
+              onClick={forgotPwd}
+              disabled={status === 'loading'}
+              style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: 'var(--dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+            >
+              ¿Has olvidado tu contraseña?
+            </button>
+          )}
         </form>
 
         <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--dim)', marginTop: 20 }}>
@@ -126,6 +160,7 @@ export default function Login() {
             onClick={() => {
               setMode(isSignup ? 'signin' : 'signup')
               setError('')
+              setNotice('')
             }}
             style={{ background: 'none', border: 'none', color: 'var(--accent2)', fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: 0 }}
           >

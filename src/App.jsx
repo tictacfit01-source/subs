@@ -7,9 +7,13 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('subs-theme') || 'dark')
   const [session, setSession] = useState(null)
   const [ready, setReady] = useState(false)
+  const [recovery, setRecovery] = useState(false) // true when arriving from a password-reset link
 
   useEffect(() => {
     localStorage.setItem('subs-theme', theme)
+    // Keep the browser/PWA chrome color in sync with the active theme.
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0d11' : '#eceef2')
   }, [theme])
 
   useEffect(() => {
@@ -21,7 +25,10 @@ export default function App() {
       setSession(data.session)
       setReady(true)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -31,7 +38,7 @@ export default function App() {
   if (!isSupabaseConfigured) content = <ConfigNotice />
   else if (!ready) content = <Splash />
   else if (!session) content = <Login />
-  else content = <SubsApp session={session} theme={theme} setTheme={setTheme} toggleTheme={toggleTheme} />
+  else content = <SubsApp session={session} theme={theme} toggleTheme={toggleTheme} recovery={recovery} />
 
   return (
     <div className="subsapp" data-theme={theme}>

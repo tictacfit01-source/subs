@@ -5,7 +5,7 @@ mes, qué se renueva pronto y en qué se te va el dinero. Cualquiera puede regis
 su correo y **cada usuario ve solo sus datos** (aislamiento por RLS en Supabase). Portada
 del diseño de Claude Design (`Claude Design/Subs.dc.html`).
 
-**Stack:** Vite + React 19 + Supabase (Auth con enlace mágico + Postgres con RLS).
+**Stack:** Vite + React 19 + Supabase (Auth con correo y contraseña + Postgres con RLS).
 Despliegue pensado para Vercel.
 
 ---
@@ -16,6 +16,9 @@ Despliegue pensado para Vercel.
 npm install
 ```
 
+> Nota: `xlsx` se instala desde el CDN oficial de SheetJS (la versión publicada en npm
+> está abandonada en 0.18.5 y tiene vulnerabilidades conocidas sin arreglo).
+
 ## 2. Crear el proyecto de Supabase
 
 1. Entra en https://supabase.com/dashboard → **New project** (nombre p. ej. `subs`,
@@ -25,18 +28,18 @@ npm install
    Eso crea la tabla `subscriptions` con su Row Level Security (cada usuario solo ve
    lo suyo).
 
-## 3. Configurar el login (enlace mágico)
+## 3. Configurar el login
 
-En Supabase → **Authentication**:
-- **Providers → Email**: debe estar habilitado (lo está por defecto). El enlace
-  mágico funciona sin contraseña.
-- **URL Configuration**:
+La app usa **correo + contraseña**, con recuperación de contraseña por email
+("¿Has olvidado tu contraseña?"). En Supabase → **Authentication**:
+- **Providers → Email**: debe estar habilitado (lo está por defecto).
+- **URL Configuration** (necesaria para que funcionen los enlaces de recuperación):
   - *Site URL*: `http://localhost:5173` (en desarrollo) y luego tu dominio de Vercel.
   - *Redirect URLs*: añade `http://localhost:5173` y tu URL de Vercel.
 - **Allow new users to sign up**: déjalo **activado** (registro abierto) para que pueda
   entrar cualquiera con su correo. Cada usuario solo ve sus propias suscripciones (RLS).
 - **Email para producción**: el envío de correos por defecto de Supabase está muy limitado
-  (pocos magic links/hora) y no sirve para una app pública real. Para uso público de verdad,
+  (pocos correos/hora) y no sirve para una app pública real. Para uso público de verdad,
   configura un SMTP propio en Authentication → Emails (p. ej. Resend, SendGrid o Postmark).
   Opcional pero recomendable: añadir también **Google** como proveedor para un login en 1 clic.
 
@@ -59,9 +62,8 @@ VITE_SUPABASE_ANON_KEY=tu-anon-public-key
 npm run dev
 ```
 
-Abre http://localhost:5173, mete tu correo, abre el enlace mágico que recibas y entra.
-La primera vez verás el estado vacío: pulsa **"cargar datos de ejemplo"** (o Ajustes →
-Cargar datos de ejemplo) para añadir 8 suscripciones demo.
+Abre http://localhost:5173, crea una cuenta con tu correo y una contraseña y entra.
+La primera vez verás el estado vacío: pulsa **"+ Añadir suscripción"** para empezar.
 
 ## 6. Desplegar en Vercel
 
@@ -80,19 +82,19 @@ src/
   main.jsx            punto de entrada
   index.css           tema (variables CSS portadas del diseño) + keyframes
   App.jsx             sesión de Supabase → Login o la app; tema claro/oscuro
-  auth/Login.jsx      acceso con enlace mágico
-  SubsApp.jsx         app principal: panel, stats, detalle, ajustes, estado vacío, sheet
+  auth/Login.jsx      acceso con correo y contraseña + recuperación
+  SubsApp.jsx         app principal: panel, stats, calendario, detalle, ajustes, sheet
   lib/
     format.js         helpers (coste mensual, fechas, formato €, categorías, FX)
     charts.jsx        donut, sparkline y barras (SVG)
-    supabase.js       cliente + CRUD + datos de ejemplo
+    supabase.js       cliente + CRUD
+    exportExcel.js    exportación a .xlsx (se carga bajo demanda)
 supabase/schema.sql   tabla + RLS para ejecutar en tu proyecto
 Claude Design/        el prototipo original (referencia)
 ```
 
 ## Siguientes pasos (ideas)
 
-- **Calendario** de cobros (quedó fuera del alcance inicial).
 - **Diseño de escritorio** a dos columnas con barra lateral.
-- **Histórico real** de gasto mes a mes (ahora la evolución es ilustrativa).
+- **Histórico real** de gasto mes a mes.
 - **Avisos por email** antes de cada renovación / fin de prueba (cron job en Vercel).

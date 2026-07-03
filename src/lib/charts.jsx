@@ -13,7 +13,7 @@ export function Donut({ cats, size = 132, stroke = 18 }) {
       const len = (c * cat.pct) / 100
       const el = (
         <circle
-          key={i}
+          key={cat.key || i}
           cx={cx}
           cy={cx}
           r={r}

@@ -30,9 +30,8 @@ export function rowToSub(r) {
   }
 }
 
-export function subToRow(s, userId) {
+export function subToRow(s) {
   return {
-    user_id: userId,
     name: s.name,
     mono: s.mono,
     brand: s.brand,
@@ -61,17 +60,17 @@ export async function fetchSubs() {
 export async function insertSub(sub, userId) {
   const { data, error } = await supabase
     .from('subscriptions')
-    .insert(subToRow(sub, userId))
+    .insert({ ...subToRow(sub), user_id: userId })
     .select()
     .single()
   if (error) throw error
   return rowToSub(data)
 }
 
-export async function updateSub(id, sub, userId) {
+export async function updateSub(id, sub) {
   const { data, error } = await supabase
     .from('subscriptions')
-    .update(subToRow(sub, userId))
+    .update(subToRow(sub))
     .eq('id', id)
     .select()
     .single()
