@@ -51,7 +51,8 @@ export default function Login() {
     setError('')
     setNotice('')
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: window.location.origin })
+      // origin + pathname: works at the domain root and under a subpath (GitHub Pages /subs/)
+      const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: window.location.origin + window.location.pathname })
       if (error) throw error
       setNotice('Te hemos enviado un enlace para restablecer la contraseña.')
     } catch (err) {
